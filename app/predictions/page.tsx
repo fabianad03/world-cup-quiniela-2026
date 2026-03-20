@@ -57,6 +57,12 @@ export default function Predictions() {
       return;
     }
 
+    const isLocked = new Date() > new Date(match.kickoff);
+    if (isLocked) {
+      setMessage("Predictions are locked for this match.");
+      return;
+    }
+
     if (!score || score.a === undefined || score.b === undefined) {
       setMessage("Please enter both scores.");
       return;
@@ -69,7 +75,7 @@ export default function Predictions() {
       .eq("match_id", match.id)
       .maybeSingle();
 
-    // Only block if trying to set joker=true on a different match
+    // Only allow one joker per entry for now
     if (score.joker) {
       const { data: allPredictions, error: jokerCheckError } = await supabase
         .from("predictions")
@@ -151,58 +157,82 @@ export default function Predictions() {
         </div>
 
         <div className="space-y-6">
-          {matches.map((match) => (
-            <div
-              key={match.id}
-              className="border border-white/20 rounded-xl p-6 bg-white/5"
-            >
-              <p className="text-sm text-white/70 mb-2">{match.round_name}</p>
+          {matches.map((match) => {
+            const isLocked = new Date() > new Date(match.kickoff);
 
-              <div className="flex items-center justify-between text-xl font-semibold">
-                <span>{match.team_a}</span>
+            return (
+              <div
+                key={match.id}
+                className="border border-white/20 rounded-xl p-6 bg-white/5"
+              >
+                <p className="text-sm text-white/70 mb-2">{match.round_name}</p>
 
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="number"
-                    className="w-16 p-2 text-center rounded bg-white/10 border border-white/20"
-                    placeholder="0"
-                    onChange={(e) =>
-                      handleChange(match.id, "a", e.target.value)
-                    }
-                  />
+                <div className="flex items-center justify-between text-xl font-semibold">
+                  <span>{match.team_a}</span>
 
-                  <span>-</span>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      disabled={isLocked}
+                      className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                      placeholder="0"
+                      onChange={(e) =>
+                        handleChange(match.id, "a", e.target.value)
+                      }
+                    />
 
-                  <input
-                    type="number"
-                    className="w-16 p-2 text-center rounded bg-white/10 border border-white/20"
-                    placeholder="0"
-                    onChange={(e) =>
-                      handleChange(match.id, "b", e.target.value)
-                    }
-                  />
+                    <span>-</span>
+
+                    <input
+                      type="number"
+                      disabled={isLocked}
+                      className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                      placeholder="0"
+                      onChange={(e) =>
+                        handleChange(match.id, "b", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <span>{match.team_b}</span>
                 </div>
 
-                <span>{match.team_b}</span>
-              </div>
+                <p className="text-sm text-white/70 mt-2">
+                  Kickoff: {new Date(match.kickoff).toLocaleString()}
+                </p>
 
-              <div className="mt-4 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={scores[match.id]?.joker || false}
-                  onChange={(e) => handleJokerChange(match.id, e.target.checked)}
-                />
-                <label className="text-sm">Use Joker (double points)</label>
-              </div>
+                {isLocked && (
+                  <p className="text-red-300 text-sm mt-2">
+                    Predictions locked for this match
+                  </p>
+                )}
 
-              <button
-                onClick={() => handleSave(match)}
-                className="mt-4 px-4 py-2 rounded bg-white text-green-950 font-semibold"
-              >
-                Save Prediction
-              </button>
-            </div>
-          ))}
+                <div className="mt-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    disabled={isLocked}
+                    checked={scores[match.id]?.joker || false}
+                    onChange={(e) =>
+                      handleJokerChange(match.id, e.target.checked)
+                    }
+                  />
+                  <label className="text-sm">Use Joker (double points)</label>
+                </div>
+
+                <button
+                  onClick={() => handleSave(match)}
+                  disabled={isLocked}
+                  className={`mt-4 px-4 py-2 rounded font-semibold ${
+                    isLocked
+                      ? "bg-gray-500 cursor-not-allowed"
+                      : "bg-white text-green-950"
+                  }`}
+                >
+                  {isLocked ? "Locked" : "Save Prediction"}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {message && <p className="mt-6">{message}</p>}
