@@ -53,16 +53,17 @@ export default async function Leaderboard() {
     if (!scores[pred.entry_id]) {
       const entry = entries?.find((e) => e.id === pred.entry_id);
       scores[pred.entry_id] = {
+        entry_id: pred.entry_id,
         entry_name: entry?.entry_name || "Unknown",
-        total: 0,
+        total_points: 0,
       };
     }
 
-    scores[pred.entry_id].total += pts;
+    scores[pred.entry_id].total_points += pts;
   });
 
   const leaderboard = Object.values(scores).sort(
-    (a: any, b: any) => b.total - a.total
+    (a: any, b: any) => b.total_points - a.total_points
   );
 
   return (
@@ -76,21 +77,37 @@ export default async function Leaderboard() {
           <p className="text-white/70">No scored predictions yet.</p>
         ) : (
           <div className="space-y-4">
-            {leaderboard.map((entry: any, index: number) => (
-              <div
-                key={index}
-                className="flex justify-between items-center p-5 bg-white/5 border border-white/20 rounded-2xl"
-              >
-                <div>
-                  <p className="text-sm text-white/70 mb-1">
-                    {getPlaceLabel(index)}
-                  </p>
-                  <p className="text-xl font-semibold">{entry.entry_name}</p>
-                </div>
+            {leaderboard.map((entry: any, index: number) => {
+              const rank = index + 1;
 
-                <p className="text-2xl font-bold">{entry.total} pts</p>
-              </div>
-            ))}
+              return (
+                <div
+                  key={entry.entry_id}
+                  className={`flex justify-between items-center p-5 rounded-2xl border ${
+                    rank === 1
+                      ? "bg-yellow-400 text-green-950 border-yellow-300"
+                      : rank === 2
+                      ? "bg-gray-300 text-green-950 border-gray-200"
+                      : rank === 3
+                      ? "bg-orange-400 text-green-950 border-orange-300"
+                      : "bg-white/5 border-white/20 text-white"
+                  }`}
+                >
+                  <div>
+                    <p
+                      className={`text-sm mb-1 ${
+                        rank <= 3 ? "text-green-900/80" : "text-white/70"
+                      }`}
+                    >
+                      {getPlaceLabel(index)}
+                    </p>
+                    <p className="text-xl font-semibold">{entry.entry_name}</p>
+                  </div>
+
+                  <p className="text-2xl font-bold">{entry.total_points} pts</p>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

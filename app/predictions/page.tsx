@@ -9,23 +9,50 @@ export default function Predictions() {
   const [entries, setEntries] = useState<any[]>([]);
   const [selectedEntryId, setSelectedEntryId] = useState("");
   const [scores, setScores] = useState<any>({});
-  const [message, setMessage] = useState("");
+  const [saveStatus, setSaveStatus] = useState<any>({});
 
-  async function loadData() {
+  async function loadMatchesAndEntries() {
     const { data: matchesData } = await supabase.from("matches").select("*");
     const { data: entriesData } = await supabase.from("entries").select("*");
 
     setMatches(matchesData || []);
     setEntries(entriesData || []);
 
-    if (entriesData && entriesData.length > 0) {
+    if (entriesData && entriesData.length > 0 && !selectedEntryId) {
       setSelectedEntryId(entriesData[0].id);
     }
   }
 
+  async function loadPredictions(entryId: string) {
+    if (!entryId) return;
+
+    const { data: predictionsData } = await supabase
+      .from("predictions")
+      .select("*")
+      .eq("entry_id", entryId);
+
+    const formattedScores: any = {};
+
+    predictionsData?.forEach((prediction) => {
+      formattedScores[prediction.match_id] = {
+        a: prediction.pred_a?.toString() ?? "",
+        b: prediction.pred_b?.toString() ?? "",
+        joker: prediction.joker ?? false,
+      };
+    });
+
+    setScores(formattedScores);
+  }
+
   useEffect(() => {
-    loadData();
+    loadMatchesAndEntries();
   }, []);
+
+  useEffect(() => {
+    if (selectedEntryId) {
+      loadPredictions(selectedEntryId);
+    }
+  }, [selectedEntryId]);
 
   function handleChange(matchId: string, team: "a" | "b", value: string) {
     setScores((prev: any) => ({
@@ -34,6 +61,11 @@ export default function Predictions() {
         ...prev[matchId],
         [team]: value,
       },
+    }));
+
+    setSaveStatus((prev: any) => ({
+      ...prev,
+      [matchId]: "",
     }));
   }
 
@@ -45,26 +77,49 @@ export default function Predictions() {
         joker: checked,
       },
     }));
+
+    setSaveStatus((prev: any) => ({
+      ...prev,
+      [matchId]: "",
+    }));
   }
 
   async function handleSave(match: any) {
-    setMessage("Saving...");
+    setSaveStatus((prev: any) => ({
+      ...prev,
+      [match.id]: "Saving...",
+    }));
 
     const score = scores[match.id];
 
     if (!selectedEntryId) {
-      setMessage("Please select an entry.");
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: "Please select an entry.",
+      }));
       return;
     }
 
     const isLocked = new Date() > new Date(match.kickoff);
     if (isLocked) {
-      setMessage("Predictions are locked for this match.");
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: "Predictions are locked for this match.",
+      }));
       return;
     }
 
-    if (!score || score.a === undefined || score.b === undefined) {
-      setMessage("Please enter both scores.");
+    if (
+      !score ||
+      score.a === undefined ||
+      score.b === undefined ||
+      score.a === "" ||
+      score.b === ""
+    ) {
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: "Please enter both scores.",
+      }));
       return;
     }
 
@@ -75,7 +130,6 @@ export default function Predictions() {
       .eq("match_id", match.id)
       .maybeSingle();
 
-    // Only allow one joker per entry for now
     if (score.joker) {
       const { data: allPredictions, error: jokerCheckError } = await supabase
         .from("predictions")
@@ -84,7 +138,10 @@ export default function Predictions() {
         .eq("joker", true);
 
       if (jokerCheckError) {
-        setMessage(`Error: ${jokerCheckError.message}`);
+        setSaveStatus((prev: any) => ({
+          ...prev,
+          [match.id]: `Error: ${jokerCheckError.message}`,
+        }));
         return;
       }
 
@@ -94,7 +151,10 @@ export default function Predictions() {
       );
 
       if (otherJokerExists) {
-        setMessage("You can only use one Joker per entry for now.");
+        setSaveStatus((prev: any) => ({
+          ...prev,
+          [match.id]: "You can only use one Joker per entry for now.",
+        }));
         return;
       }
     }
@@ -128,9 +188,24 @@ export default function Predictions() {
     }
 
     if (error) {
-      setMessage(`Error: ${error.message}`);
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: `Error: ${error.message}`,
+      }));
     } else {
-      setMessage("Prediction saved.");
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: "Saved!",
+      }));
+
+      await loadPredictions(selectedEntryId);
+
+      setTimeout(() => {
+        setSaveStatus((prev: any) => ({
+          ...prev,
+          [match.id]: "",
+        }));
+      }, 2000);
     }
   }
 
@@ -159,6 +234,7 @@ export default function Predictions() {
         <div className="space-y-6">
           {matches.map((match) => {
             const isLocked = new Date() > new Date(match.kickoff);
+            const status = saveStatus[match.id] || "";
 
             return (
               <div
@@ -174,6 +250,7 @@ export default function Predictions() {
                     <input
                       type="number"
                       disabled={isLocked}
+                      value={scores[match.id]?.a || ""}
                       className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
                       placeholder="0"
                       onChange={(e) =>
@@ -186,6 +263,7 @@ export default function Predictions() {
                     <input
                       type="number"
                       disabled={isLocked}
+                      value={scores[match.id]?.b || ""}
                       className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
                       placeholder="0"
                       onChange={(e) =>
@@ -219,23 +297,39 @@ export default function Predictions() {
                   <label className="text-sm">Use Joker (double points)</label>
                 </div>
 
-                <button
-                  onClick={() => handleSave(match)}
-                  disabled={isLocked}
-                  className={`mt-4 px-4 py-2 rounded font-semibold ${
-                    isLocked
-                      ? "bg-gray-500 cursor-not-allowed"
-                      : "bg-white text-green-950"
-                  }`}
-                >
-                  {isLocked ? "Locked" : "Save Prediction"}
-                </button>
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    onClick={() => handleSave(match)}
+                    disabled={isLocked}
+                    className={`px-4 py-2 rounded font-semibold ${
+                      isLocked
+                        ? "bg-gray-500 cursor-not-allowed"
+                        : status === "Saving..."
+                        ? "bg-yellow-300 text-green-950"
+                        : status === "Saved!"
+                        ? "bg-green-400 text-green-950"
+                        : "bg-white text-green-950"
+                    }`}
+                  >
+                    {isLocked
+                      ? "Locked"
+                      : status === "Saving..."
+                      ? "Saving..."
+                      : status === "Saved!"
+                      ? "Saved!"
+                      : "Save Prediction"}
+                  </button>
+
+                  {status &&
+                    status !== "Saving..." &&
+                    status !== "Saved!" && (
+                      <p className="text-sm text-red-300">{status}</p>
+                    )}
+                </div>
               </div>
             );
           })}
         </div>
-
-        {message && <p className="mt-6">{message}</p>}
       </div>
     </main>
   );
