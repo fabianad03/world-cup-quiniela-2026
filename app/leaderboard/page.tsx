@@ -48,13 +48,17 @@ export default async function Leaderboard() {
     const match = matches?.find((m) => m.id === pred.match_id);
     if (!match) return;
 
+    const entry = entries?.find((e) => e.id === pred.entry_id);
+
+    // Skip unpaid entries
+    if (!entry?.paid) return;
+
     const pts = calculatePoints(pred, match);
 
     if (!scores[pred.entry_id]) {
-      const entry = entries?.find((e) => e.id === pred.entry_id);
       scores[pred.entry_id] = {
         entry_id: pred.entry_id,
-        entry_name: entry?.entry_name || "Unknown",
+        entry_name: entry.entry_name,
         total_points: 0,
       };
     }
@@ -104,7 +108,9 @@ export default async function Leaderboard() {
                     <p className="text-xl font-semibold">{entry.entry_name}</p>
                   </div>
 
-                  <p className="text-2xl font-bold">{entry.total_points} pts</p>
+                  <p className="text-2xl font-bold">
+                    {entry.total_points} pts
+                  </p>
                 </div>
               );
             })}

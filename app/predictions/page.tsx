@@ -84,6 +84,8 @@ export default function Predictions() {
     }));
   }
 
+  const selectedEntry = entries.find((e) => e.id === selectedEntryId);
+
   async function handleSave(match: any) {
     setSaveStatus((prev: any) => ({
       ...prev,
@@ -96,6 +98,14 @@ export default function Predictions() {
       setSaveStatus((prev: any) => ({
         ...prev,
         [match.id]: "Please select an entry.",
+      }));
+      return;
+    }
+
+    if (!selectedEntry?.paid) {
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: "This entry is not paid.",
       }));
       return;
     }
@@ -119,6 +129,14 @@ export default function Predictions() {
       setSaveStatus((prev: any) => ({
         ...prev,
         [match.id]: "Please enter both scores.",
+      }));
+      return;
+    }
+
+    if (Number(score.a) < 0 || Number(score.b) < 0) {
+      setSaveStatus((prev: any) => ({
+        ...prev,
+        [match.id]: "Scores cannot be negative.",
       }));
       return;
     }
@@ -234,6 +252,7 @@ export default function Predictions() {
         <div className="space-y-6">
           {matches.map((match) => {
             const isLocked = new Date() > new Date(match.kickoff);
+            const isDisabled = isLocked || !selectedEntry?.paid;
             const status = saveStatus[match.id] || "";
 
             return (
@@ -249,7 +268,8 @@ export default function Predictions() {
                   <div className="flex gap-2 items-center">
                     <input
                       type="number"
-                      disabled={isLocked}
+                      min={0}
+                      disabled={isDisabled}
                       value={scores[match.id]?.a || ""}
                       className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
                       placeholder="0"
@@ -262,7 +282,8 @@ export default function Predictions() {
 
                     <input
                       type="number"
-                      disabled={isLocked}
+                      min={0}
+                      disabled={isDisabled}
                       value={scores[match.id]?.b || ""}
                       className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
                       placeholder="0"
@@ -279,6 +300,12 @@ export default function Predictions() {
                   Kickoff: {new Date(match.kickoff).toLocaleString()}
                 </p>
 
+                {!selectedEntry?.paid && (
+                  <p className="text-yellow-300 text-sm mt-2">
+                    This entry must be paid to submit predictions
+                  </p>
+                )}
+
                 {isLocked && (
                   <p className="text-red-300 text-sm mt-2">
                     Predictions locked for this match
@@ -288,7 +315,7 @@ export default function Predictions() {
                 <div className="mt-4 flex items-center gap-2">
                   <input
                     type="checkbox"
-                    disabled={isLocked}
+                    disabled={isDisabled}
                     checked={scores[match.id]?.joker || false}
                     onChange={(e) =>
                       handleJokerChange(match.id, e.target.checked)
@@ -300,9 +327,9 @@ export default function Predictions() {
                 <div className="mt-4 flex items-center gap-3">
                   <button
                     onClick={() => handleSave(match)}
-                    disabled={isLocked}
+                    disabled={isDisabled}
                     className={`px-4 py-2 rounded font-semibold ${
-                      isLocked
+                      isDisabled
                         ? "bg-gray-500 cursor-not-allowed"
                         : status === "Saving..."
                         ? "bg-yellow-300 text-green-950"
@@ -313,6 +340,8 @@ export default function Predictions() {
                   >
                     {isLocked
                       ? "Locked"
+                      : !selectedEntry?.paid
+                      ? "Unavailable"
                       : status === "Saving..."
                       ? "Saving..."
                       : status === "Saved!"
