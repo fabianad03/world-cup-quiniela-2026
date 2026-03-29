@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
@@ -50,7 +53,7 @@ export default async function Leaderboard() {
 
     const entry = entries?.find((e) => e.id === pred.entry_id);
 
-    // Skip unpaid entries
+    // skip deleted or unpaid entries
     if (!entry?.paid) return;
 
     const pts = calculatePoints(pred, match);
