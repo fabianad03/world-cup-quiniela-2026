@@ -3,38 +3,65 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function EntriesPage() {
+  const { t, language, mounted } = useLanguage();
+
   const [entries, setEntries] = useState<any[]>([]);
   const [entryName, setEntryName] = useState("");
   const [message, setMessage] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // temporary user id for now
-  const userId = "11111111-1111-1111-1111-111111111111";
-
-  async function loadEntries() {
+  async function loadEntries(uid: string) {
     const { data } = await supabase
       .from("entries")
       .select("*")
-      .eq("user_id", userId);
+      .eq("user_id", uid);
 
     setEntries(data || []);
   }
 
   useEffect(() => {
-    loadEntries();
+    async function init() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        setUserId(user.id);
+        await loadEntries(user.id);
+      } else {
+        setUserId(null);
+        setEntries([]);
+      }
+
+      setAuthLoading(false);
+    }
+
+    init();
   }, []);
 
   async function handleCreateEntry() {
     setMessage("");
 
     if (!entryName.trim()) {
-      setMessage("Please enter an entry name.");
+      setMessage(t.entries.emptyName);
       return;
     }
 
     if (entries.length >= 5) {
-      setMessage("Maximum of 5 entries allowed.");
+      setMessage(t.entries.maxError);
+      return;
+    }
+
+    if (!userId) {
+      setMessage(
+        language === "es"
+          ? "Debes iniciar sesión."
+          : "You must be logged in."
+      );
       return;
     }
 
@@ -49,41 +76,55 @@ export default function EntriesPage() {
     if (error) {
       setMessage(`Error: ${error.message}`);
     } else {
-      setMessage("Entry created successfully.");
+      setMessage(t.entries.success);
       setEntryName("");
-      loadEntries();
+      await loadEntries(userId);
     }
   }
+
+  if (!mounted) return null;
 
   return (
     <main className="min-h-screen bg-green-950 text-white">
       <Navbar />
 
       <div className="max-w-3xl mx-auto p-10">
-        <h1 className="text-4xl font-bold mb-8">My Entries</h1>
+        <h1 className="text-4xl font-bold mb-8">{t.entries.title}</h1>
+
+        {!authLoading && !userId && (
+          <p className="mb-6 text-red-300">
+            {language === "es"
+              ? "Debes iniciar sesión para crear entradas."
+              : "You must be logged in to create entries."}
+          </p>
+        )}
 
         <div className="mb-10 p-6 rounded-2xl border border-white/20 bg-white/5">
-          <h2 className="text-2xl font-semibold mb-4">Create New Entry</h2>
+          <h2 className="text-2xl font-semibold mb-4">
+            {t.entries.createTitle}
+          </h2>
 
           <div className="flex gap-3">
             <input
               type="text"
               value={entryName}
               onChange={(e) => setEntryName(e.target.value)}
-              placeholder="Entry name"
-              className="flex-1 p-3 rounded bg-white/10 border border-white/20"
+              placeholder={t.entries.placeholder}
+              disabled={authLoading || !userId}
+              className="flex-1 p-3 rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
             />
 
             <button
               onClick={handleCreateEntry}
-              className="px-5 py-3 rounded bg-white text-green-950 font-semibold"
+              disabled={authLoading || !userId}
+              className="px-5 py-3 rounded bg-white text-green-950 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create
+              {t.entries.create}
             </button>
           </div>
 
           <p className="text-sm text-white/70 mt-3">
-            {entries.length}/5 entries used
+            {entries.length}/5 {t.entries.used}
           </p>
 
           {message && <p className="mt-3 text-sm">{message}</p>}
@@ -97,7 +138,7 @@ export default function EntriesPage() {
             >
               <p className="text-xl font-semibold">{entry.entry_name}</p>
               <p className="text-sm text-white/70 mt-1">
-                {entry.paid ? "Paid" : "Not paid"}
+                {entry.paid ? t.common.paid : t.common.unpaid}
               </p>
             </div>
           ))}

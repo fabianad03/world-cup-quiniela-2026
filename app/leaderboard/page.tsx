@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
+import LeaderboardClient from "@/components/LeaderboardClient";
 
 function calculatePoints(pred: any, match: any) {
   if (!match.is_finished) return 0;
@@ -33,13 +33,6 @@ function calculatePoints(pred: any, match: any) {
   return points;
 }
 
-function getPlaceLabel(index: number) {
-  if (index === 0) return "🥇 1st";
-  if (index === 1) return "🥈 2nd";
-  if (index === 2) return "🥉 3rd";
-  return `#${index + 1}`;
-}
-
 export default async function Leaderboard() {
   const { data: matches } = await supabase.from("matches").select("*");
   const { data: predictions } = await supabase.from("predictions").select("*");
@@ -53,7 +46,6 @@ export default async function Leaderboard() {
 
     const entry = entries?.find((e) => e.id === pred.entry_id);
 
-    // skip deleted or unpaid entries
     if (!entry?.paid) return;
 
     const pts = calculatePoints(pred, match);
@@ -73,53 +65,5 @@ export default async function Leaderboard() {
     (a: any, b: any) => b.total_points - a.total_points
   );
 
-  return (
-    <main className="min-h-screen bg-green-950 text-white">
-      <Navbar />
-
-      <div className="p-10 max-w-3xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Leaderboard</h1>
-
-        {leaderboard.length === 0 ? (
-          <p className="text-white/70">No scored predictions yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {leaderboard.map((entry: any, index: number) => {
-              const rank = index + 1;
-
-              return (
-                <div
-                  key={entry.entry_id}
-                  className={`flex justify-between items-center p-5 rounded-2xl border ${
-                    rank === 1
-                      ? "bg-yellow-400 text-green-950 border-yellow-300"
-                      : rank === 2
-                      ? "bg-gray-300 text-green-950 border-gray-200"
-                      : rank === 3
-                      ? "bg-orange-400 text-green-950 border-orange-300"
-                      : "bg-white/5 border-white/20 text-white"
-                  }`}
-                >
-                  <div>
-                    <p
-                      className={`text-sm mb-1 ${
-                        rank <= 3 ? "text-green-900/80" : "text-white/70"
-                      }`}
-                    >
-                      {getPlaceLabel(index)}
-                    </p>
-                    <p className="text-xl font-semibold">{entry.entry_name}</p>
-                  </div>
-
-                  <p className="text-2xl font-bold">
-                    {entry.total_points} pts
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </main>
-  );
+  return <LeaderboardClient leaderboard={leaderboard} />;
 }

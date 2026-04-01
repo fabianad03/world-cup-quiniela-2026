@@ -3,28 +3,71 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
+import { useLanguage } from "@/components/LanguageProvider";
+import { translateRoundName, translateTeamName } from "@/lib/translate";
+
+type MatchStatus =
+  | { type: "idle"; message?: "" }
+  | { type: "saving"; message?: "" }
+  | { type: "saved"; message?: "" }
+  | { type: "error"; message: string };
 
 export default function Predictions() {
+  const { t, language, mounted } = useLanguage();
+
   const [matches, setMatches] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [selectedEntryId, setSelectedEntryId] = useState("");
   const [scores, setScores] = useState<any>({});
-  const [saveStatus, setSaveStatus] = useState<any>({});
+  const [saveStatus, setSaveStatus] = useState<Record<string, MatchStatus>>({});
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  async function loadMatchesAndEntries() {
+  async function loadMatches() {
     const { data: matchesData } = await supabase.from("matches").select("*");
-    const { data: entriesData } = await supabase.from("entries").select("*");
-
     setMatches(matchesData || []);
+  }
+
+  async function loadUserAndEntries() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setUserId(null);
+      setEntries([]);
+      setSelectedEntryId("");
+      setAuthLoading(false);
+      return;
+    }
+
+    setUserId(user.id);
+
+    const { data: entriesData } = await supabase
+      .from("entries")
+      .select("*")
+      .eq("user_id", user.id);
+
     setEntries(entriesData || []);
 
-    if (entriesData && entriesData.length > 0 && !selectedEntryId) {
-      setSelectedEntryId(entriesData[0].id);
+    if (entriesData && entriesData.length > 0) {
+      setSelectedEntryId((prev) =>
+        prev && entriesData.some((entry) => entry.id === prev)
+          ? prev
+          : entriesData[0].id
+      );
+    } else {
+      setSelectedEntryId("");
     }
+
+    setAuthLoading(false);
   }
 
   async function loadPredictions(entryId: string) {
-    if (!entryId) return;
+    if (!entryId) {
+      setScores({});
+      return;
+    }
 
     const { data: predictionsData } = await supabase
       .from("predictions")
@@ -45,12 +88,19 @@ export default function Predictions() {
   }
 
   useEffect(() => {
-    loadMatchesAndEntries();
+    async function init() {
+      await loadMatches();
+      await loadUserAndEntries();
+    }
+
+    init();
   }, []);
 
   useEffect(() => {
     if (selectedEntryId) {
       loadPredictions(selectedEntryId);
+    } else {
+      setScores({});
     }
   }, [selectedEntryId]);
 
@@ -63,9 +113,9 @@ export default function Predictions() {
       },
     }));
 
-    setSaveStatus((prev: any) => ({
+    setSaveStatus((prev) => ({
       ...prev,
-      [matchId]: "",
+      [matchId]: { type: "idle" },
     }));
   }
 
@@ -78,43 +128,75 @@ export default function Predictions() {
       },
     }));
 
-    setSaveStatus((prev: any) => ({
+    setSaveStatus((prev) => ({
       ...prev,
-      [matchId]: "",
+      [matchId]: { type: "idle" },
     }));
   }
 
   const selectedEntry = entries.find((e) => e.id === selectedEntryId);
 
   async function handleSave(match: any) {
-    setSaveStatus((prev: any) => ({
+    setSaveStatus((prev) => ({
       ...prev,
-      [match.id]: "Saving...",
+      [match.id]: { type: "saving" },
     }));
 
     const score = scores[match.id];
 
-    if (!selectedEntryId) {
-      setSaveStatus((prev: any) => ({
+    if (!userId) {
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: "Please select an entry.",
+        [match.id]: {
+          type: "error",
+          message:
+            language === "es"
+              ? "Debes iniciar sesión."
+              : "You must be logged in.",
+        },
+      }));
+      return;
+    }
+
+    if (!selectedEntryId) {
+      setSaveStatus((prev) => ({
+        ...prev,
+        [match.id]: {
+          type: "error",
+          message:
+            language === "es"
+              ? "Por favor selecciona una entrada."
+              : "Please select an entry.",
+        },
       }));
       return;
     }
 
     if (!selectedEntry?.paid) {
-      setSaveStatus((prev: any) => ({
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: "This entry is not paid.",
+        [match.id]: {
+          type: "error",
+          message:
+            language === "es"
+              ? "Esta entrada no está pagada."
+              : "This entry is not paid.",
+        },
       }));
       return;
     }
 
     const isLocked = new Date() > new Date(match.kickoff);
     if (isLocked) {
-      setSaveStatus((prev: any) => ({
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: "Predictions are locked for this match.",
+        [match.id]: {
+          type: "error",
+          message:
+            language === "es"
+              ? "Las predicciones están bloqueadas para este partido."
+              : "Predictions are locked for this match.",
+        },
       }));
       return;
     }
@@ -126,17 +208,23 @@ export default function Predictions() {
       score.a === "" ||
       score.b === ""
     ) {
-      setSaveStatus((prev: any) => ({
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: "Please enter both scores.",
+        [match.id]: {
+          type: "error",
+          message: t.predictions.enterScores,
+        },
       }));
       return;
     }
 
     if (Number(score.a) < 0 || Number(score.b) < 0) {
-      setSaveStatus((prev: any) => ({
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: "Scores cannot be negative.",
+        [match.id]: {
+          type: "error",
+          message: t.predictions.negativeError,
+        },
       }));
       return;
     }
@@ -156,9 +244,12 @@ export default function Predictions() {
         .eq("joker", true);
 
       if (jokerCheckError) {
-        setSaveStatus((prev: any) => ({
+        setSaveStatus((prev) => ({
           ...prev,
-          [match.id]: `Error: ${jokerCheckError.message}`,
+          [match.id]: {
+            type: "error",
+            message: `Error: ${jokerCheckError.message}`,
+          },
         }));
         return;
       }
@@ -169,9 +260,15 @@ export default function Predictions() {
       );
 
       if (otherJokerExists) {
-        setSaveStatus((prev: any) => ({
+        setSaveStatus((prev) => ({
           ...prev,
-          [match.id]: "You can only use one Joker per entry for now.",
+          [match.id]: {
+            type: "error",
+            message:
+              language === "es"
+                ? "Por ahora solo puedes usar un comodín por entrada."
+                : "You can only use one Joker per entry for now.",
+          },
         }));
         return;
       }
@@ -206,64 +303,94 @@ export default function Predictions() {
     }
 
     if (error) {
-      setSaveStatus((prev: any) => ({
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: `Error: ${error.message}`,
+        [match.id]: {
+          type: "error",
+          message: `Error: ${error.message}`,
+        },
       }));
     } else {
-      setSaveStatus((prev: any) => ({
+      setSaveStatus((prev) => ({
         ...prev,
-        [match.id]: "Saved!",
+        [match.id]: { type: "saved" },
       }));
 
       await loadPredictions(selectedEntryId);
 
       setTimeout(() => {
-        setSaveStatus((prev: any) => ({
+        setSaveStatus((prev) => ({
           ...prev,
-          [match.id]: "",
+          [match.id]: { type: "idle" },
         }));
       }, 2000);
     }
   }
+
+  if (!mounted) return null;
 
   return (
     <main className="min-h-screen bg-green-950 text-white">
       <Navbar />
 
       <div className="p-10 max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Make Your Predictions</h1>
+        <h1 className="text-4xl font-bold mb-8">{t.predictions.title}</h1>
+
+        {!authLoading && !userId && (
+          <p className="mb-6 text-red-300">
+            {language === "es"
+              ? "Debes iniciar sesión para hacer predicciones."
+              : "You must be logged in to make predictions."}
+          </p>
+        )}
 
         <div className="mb-8">
-          <label className="block text-sm font-medium mb-2">Choose Entry</label>
+          <label className="block text-sm font-medium mb-2">
+            {language === "es" ? "Elegir entrada" : "Choose Entry"}
+          </label>
           <select
             value={selectedEntryId}
             onChange={(e) => setSelectedEntryId(e.target.value)}
             className="w-full max-w-sm p-3 rounded bg-white/10 border border-white/20"
+            disabled={authLoading || !userId || entries.length === 0}
           >
-            {entries.map((entry) => (
-              <option key={entry.id} value={entry.id} className="text-black">
-                {entry.entry_name}
+            {entries.length === 0 ? (
+              <option value="" className="text-black">
+                {language === "es" ? "No hay entradas" : "No entries"}
               </option>
-            ))}
+            ) : (
+              entries.map((entry) => (
+                <option key={entry.id} value={entry.id} className="text-black">
+                  {entry.entry_name}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
         <div className="space-y-6">
           {matches.map((match) => {
             const isLocked = new Date() > new Date(match.kickoff);
-            const isDisabled = isLocked || !selectedEntry?.paid;
-            const status = saveStatus[match.id] || "";
+            const isDisabled =
+              authLoading ||
+              !userId ||
+              !selectedEntryId ||
+              isLocked ||
+              !selectedEntry?.paid;
+
+            const status = saveStatus[match.id] || { type: "idle" as const };
 
             return (
               <div
                 key={match.id}
                 className="border border-white/20 rounded-xl p-6 bg-white/5"
               >
-                <p className="text-sm text-white/70 mb-2">{match.round_name}</p>
+                <p className="text-sm text-white/70 mb-2">
+                  {translateRoundName(match.round_name, language)}
+                </p>
 
                 <div className="flex items-center justify-between text-xl font-semibold">
-                  <span>{match.team_a}</span>
+                  <span>{translateTeamName(match.team_a, language)}</span>
 
                   <div className="flex gap-2 items-center">
                     <input
@@ -293,22 +420,38 @@ export default function Predictions() {
                     />
                   </div>
 
-                  <span>{match.team_b}</span>
+                  <span>{translateTeamName(match.team_b, language)}</span>
                 </div>
 
                 <p className="text-sm text-white/70 mt-2">
-                  Kickoff: {new Date(match.kickoff).toLocaleString()}
+                  {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
+                  {new Date(match.kickoff).toLocaleString(
+                    language === "es" ? "es-ES" : "en-US",
+                    {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                      hour12: true,
+                    }
+                  )}
                 </p>
 
-                {!selectedEntry?.paid && (
+                {!authLoading && !selectedEntryId && userId && (
                   <p className="text-yellow-300 text-sm mt-2">
-                    This entry must be paid to submit predictions
+                    {language === "es"
+                      ? "Selecciona una entrada para hacer predicciones."
+                      : "Select an entry to make predictions."}
+                  </p>
+                )}
+
+                {!authLoading && !selectedEntry?.paid && selectedEntryId && (
+                  <p className="text-yellow-300 text-sm mt-2">
+                    {t.predictions.unpaidBlocked}
                   </p>
                 )}
 
                 {isLocked && (
                   <p className="text-red-300 text-sm mt-2">
-                    Predictions locked for this match
+                    {t.predictions.locked}
                   </p>
                 )}
 
@@ -321,7 +464,11 @@ export default function Predictions() {
                       handleJokerChange(match.id, e.target.checked)
                     }
                   />
-                  <label className="text-sm">Use Joker (double points)</label>
+                  <label className="text-sm">
+                    {language === "es"
+                      ? "Comodín (doble puntaje)"
+                      : "Joker (double points)"}
+                  </label>
                 </div>
 
                 <div className="mt-4 flex items-center gap-3">
@@ -331,29 +478,39 @@ export default function Predictions() {
                     className={`px-4 py-2 rounded font-semibold ${
                       isDisabled
                         ? "bg-gray-500 cursor-not-allowed"
-                        : status === "Saving..."
+                        : status.type === "saving"
                         ? "bg-yellow-300 text-green-950"
-                        : status === "Saved!"
+                        : status.type === "saved"
                         ? "bg-green-400 text-green-950"
                         : "bg-white text-green-950"
                     }`}
                   >
                     {isLocked
-                      ? "Locked"
+                      ? t.predictions.locked
+                      : authLoading
+                      ? language === "es"
+                        ? "Cargando..."
+                        : "Loading..."
+                      : !userId
+                      ? language === "es"
+                        ? "Inicia sesión"
+                        : "Log in"
+                      : !selectedEntryId
+                      ? language === "es"
+                        ? "Selecciona entrada"
+                        : "Select entry"
                       : !selectedEntry?.paid
-                      ? "Unavailable"
-                      : status === "Saving..."
-                      ? "Saving..."
-                      : status === "Saved!"
-                      ? "Saved!"
-                      : "Save Prediction"}
+                      ? t.common.unpaid
+                      : status.type === "saving"
+                      ? t.common.saving
+                      : status.type === "saved"
+                      ? t.common.saved
+                      : t.common.save}
                   </button>
 
-                  {status &&
-                    status !== "Saving..." &&
-                    status !== "Saved!" && (
-                      <p className="text-sm text-red-300">{status}</p>
-                    )}
+                  {status.type === "error" && (
+                    <p className="text-sm text-red-300">{status.message}</p>
+                  )}
                 </div>
               </div>
             );
