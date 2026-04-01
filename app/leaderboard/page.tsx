@@ -1,6 +1,6 @@
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+"use client";
 
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
@@ -40,38 +40,52 @@ function getPlaceLabel(index: number) {
   return `#${index + 1}`;
 }
 
-export default async function Leaderboard() {
-  const { data: matches } = await supabase.from("matches").select("*");
-  const { data: predictions } = await supabase.from("predictions").select("*");
-  const { data: entries } = await supabase.from("entries").select("*");
+export default function Leaderboard() {
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const scores: any = {};
+  async function loadLeaderboard() {
+    setLoading(true);
 
-  predictions?.forEach((pred) => {
-    const match = matches?.find((m) => m.id === pred.match_id);
-    if (!match) return;
+    const { data: matches } = await supabase.from("matches").select("*");
+    const { data: predictions } = await supabase.from("predictions").select("*");
+    const { data: entries } = await supabase.from("entries").select("*");
 
-    const entry = entries?.find((e) => e.id === pred.entry_id);
+    const scores: any = {};
 
-    // skip deleted or unpaid entries
-    if (!entry?.paid) return;
+    predictions?.forEach((pred) => {
+      const match = matches?.find((m) => m.id === pred.match_id);
+      if (!match) return;
 
-    const pts = calculatePoints(pred, match);
+      const entry = entries?.find((e) => e.id === pred.entry_id);
 
-    if (!scores[pred.entry_id]) {
-      scores[pred.entry_id] = {
-        entry_id: pred.entry_id,
-        entry_name: entry.entry_name,
-        total_points: 0,
-      };
-    }
+      // Skip deleted or unpaid entries
+      if (!entry?.paid) return;
 
-    scores[pred.entry_id].total_points += pts;
-  });
+      const pts = calculatePoints(pred, match);
 
-  const leaderboard = Object.values(scores).sort(
-    (a: any, b: any) => b.total_points - a.total_points
-  );
+      if (!scores[pred.entry_id]) {
+        scores[pred.entry_id] = {
+          entry_id: pred.entry_id,
+          entry_name: entry.entry_name,
+          total_points: 0,
+        };
+      }
+
+      scores[pred.entry_id].total_points += pts;
+    });
+
+    const sorted = Object.values(scores).sort(
+      (a: any, b: any) => b.total_points - a.total_points
+    );
+
+    setLeaderboard(sorted);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, []);
 
   return (
     <main className="min-h-screen bg-green-950 text-white">
@@ -80,7 +94,9 @@ export default async function Leaderboard() {
       <div className="p-10 max-w-3xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Leaderboard</h1>
 
-        {leaderboard.length === 0 ? (
+        {loading ? (
+          <p className="text-white/70">Loading leaderboard...</p>
+        ) : leaderboard.length === 0 ? (
           <p className="text-white/70">No scored predictions yet.</p>
         ) : (
           <div className="space-y-4">
