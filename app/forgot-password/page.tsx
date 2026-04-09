@@ -2,50 +2,49 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const { language, mounted } = useLanguage();
-  const router = useRouter();
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleResetRequest(e: React.FormEvent) {
     e.preventDefault();
-
-    if (loading) return;
-
     setMessage("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/update-password`
+        : undefined;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
     });
 
     if (error) {
       setMessage(
         language === "es"
-          ? `Error al iniciar sesión: ${error.message}`
-          : `Login error: ${error.message}`
+          ? `Error al enviar el correo de recuperación: ${error.message}`
+          : `Error sending reset email: ${error.message}`
       );
       setLoading(false);
       return;
     }
 
     setMessage(
-      language === "es" ? "Inicio de sesión exitoso." : "Login successful."
+      language === "es"
+        ? "Te enviamos un correo para restablecer tu contraseña. Revisa tu bandeja de entrada."
+        : "We sent you a password reset email. Please check your inbox."
     );
 
     setLoading(false);
-    router.push("/");
-    router.refresh();
+    setEmail("");
   }
 
   if (!mounted) return null;
@@ -56,11 +55,11 @@ export default function LoginPage() {
 
       <div className="max-w-md mx-auto p-10">
         <h1 className="text-4xl font-bold mb-8">
-          {language === "es" ? "Iniciar Sesión" : "Login"}
+          {language === "es" ? "Recuperar Contraseña" : "Forgot Password"}
         </h1>
 
         <form
-          onSubmit={handleLogin}
+          onSubmit={handleResetRequest}
           className="p-6 rounded-2xl border border-white/20 bg-white/5 space-y-4"
         >
           <div>
@@ -79,22 +78,6 @@ export default function LoginPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm mb-2">
-              {language === "es" ? "Contraseña" : "Password"}
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full p-3 rounded bg-white/10 border border-white/20"
-              placeholder={
-                language === "es" ? "Tu contraseña" : "Your password"
-              }
-            />
-          </div>
-
           <button
             type="submit"
             disabled={loading}
@@ -102,27 +85,18 @@ export default function LoginPage() {
           >
             {loading
               ? language === "es"
-                ? "Entrando..."
-                : "Logging in..."
+                ? "Enviando..."
+                : "Sending..."
               : language === "es"
-              ? "Iniciar Sesión"
-              : "Login"}
+              ? "Enviar correo de recuperación"
+              : "Send reset email"}
           </button>
 
           {message && <p className="text-sm mt-2">{message}</p>}
 
-          <p className="text-sm">
-            <Link href="/forgot-password" className="underline">
-              {language === "es"
-                ? "¿Olvidaste tu contraseña?"
-                : "Forgot your password?"}
-            </Link>
-          </p>
-
           <p className="text-sm text-white/70">
-            {language === "es" ? "¿No tienes cuenta?" : "Don’t have an account?"}{" "}
-            <Link href="/signup" className="underline">
-              {language === "es" ? "Regístrate" : "Sign up"}
+            <Link href="/login" className="underline">
+              {language === "es" ? "Volver a iniciar sesión" : "Back to login"}
             </Link>
           </p>
         </form>

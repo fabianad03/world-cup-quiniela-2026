@@ -19,7 +19,7 @@ export default function SignupPage() {
     setMessage("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -34,10 +34,30 @@ export default function SignupPage() {
       return;
     }
 
+    const user = data.user;
+
+    if (user) {
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: user.id,
+        preferred_language: language,
+        email,
+      });
+
+      if (profileError) {
+        setMessage(
+          language === "es"
+            ? `Cuenta creada, pero hubo un problema al crear el perfil: ${profileError.message}`
+            : `Account created, but there was a problem creating the profile: ${profileError.message}`
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
     setMessage(
       language === "es"
-        ? "Cuenta creada exitosamente. Ya puedes iniciar sesión."
-        : "Account created successfully. You can now log in."
+        ? "Cuenta creada. Inicia sesión para continuar."
+        : "Account created. Log in to continue."
     );
 
     setLoading(false);
@@ -70,7 +90,9 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full p-3 rounded bg-white/10 border border-white/20"
-              placeholder={language === "es" ? "tucorreo@email.com" : "you@example.com"}
+              placeholder={
+                language === "es" ? "tucorreo@email.com" : "you@example.com"
+              }
             />
           </div>
 
@@ -84,7 +106,9 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full p-3 rounded bg-white/10 border border-white/20"
-              placeholder={language === "es" ? "Tu contraseña" : "Your password"}
+              placeholder={
+                language === "es" ? "Tu contraseña" : "Your password"
+              }
             />
           </div>
 
@@ -105,7 +129,9 @@ export default function SignupPage() {
           {message && <p className="text-sm mt-2">{message}</p>}
 
           <p className="text-sm text-white/70">
-            {language === "es" ? "¿Ya tienes cuenta?" : "Already have an account?"}{" "}
+            {language === "es"
+              ? "¿Ya tienes cuenta?"
+              : "Already have an account?"}{" "}
             <Link href="/login" className="underline">
               {language === "es" ? "Inicia sesión" : "Login"}
             </Link>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
 
 export default function EntriesPage() {
   const { t, language, mounted } = useLanguage();
+  const router = useRouter();
 
   const [entries, setEntries] = useState<any[]>([]);
   const [entryName, setEntryName] = useState("");
@@ -29,14 +31,13 @@ export default function EntriesPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (user) {
-        setUserId(user.id);
-        await loadEntries(user.id);
-      } else {
-        setUserId(null);
-        setEntries([]);
+      if (!user) {
+        router.push("/login");
+        return;
       }
 
+      setUserId(user.id);
+      await loadEntries(user.id);
       setAuthLoading(false);
     }
 
@@ -56,14 +57,7 @@ export default function EntriesPage() {
       return;
     }
 
-    if (!userId) {
-      setMessage(
-        language === "es"
-          ? "Debes iniciar sesión."
-          : "You must be logged in."
-      );
-      return;
-    }
+    if (!userId) return;
 
     const { error } = await supabase.from("entries").insert([
       {
@@ -82,7 +76,7 @@ export default function EntriesPage() {
     }
   }
 
-  if (!mounted) return null;
+  if (!mounted || authLoading) return null;
 
   return (
     <main className="min-h-screen bg-green-950 text-white">
@@ -90,14 +84,6 @@ export default function EntriesPage() {
 
       <div className="max-w-3xl mx-auto p-10">
         <h1 className="text-4xl font-bold mb-8">{t.entries.title}</h1>
-
-        {!authLoading && !userId && (
-          <p className="mb-6 text-red-300">
-            {language === "es"
-              ? "Debes iniciar sesión para crear entradas."
-              : "You must be logged in to create entries."}
-          </p>
-        )}
 
         <div className="mb-10 p-6 rounded-2xl border border-white/20 bg-white/5">
           <h2 className="text-2xl font-semibold mb-4">
@@ -110,14 +96,12 @@ export default function EntriesPage() {
               value={entryName}
               onChange={(e) => setEntryName(e.target.value)}
               placeholder={t.entries.placeholder}
-              disabled={authLoading || !userId}
-              className="flex-1 p-3 rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
+              className="flex-1 p-3 rounded bg-white/10 border border-white/20"
             />
 
             <button
               onClick={handleCreateEntry}
-              disabled={authLoading || !userId}
-              className="px-5 py-3 rounded bg-white text-green-950 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+              className="px-5 py-3 rounded bg-white text-green-950 font-semibold"
             >
               {t.entries.create}
             </button>

@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
+import { useRouter } from "next/navigation";
 
 type MatchStatus =
   | { type: "idle"; message?: "" }
@@ -22,6 +23,7 @@ export default function Predictions() {
   const [saveStatus, setSaveStatus] = useState<Record<string, MatchStatus>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const router = useRouter();
 
   async function loadMatches() {
     const { data: matchesData } = await supabase.from("matches").select("*");
@@ -34,10 +36,7 @@ export default function Predictions() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setUserId(null);
-      setEntries([]);
-      setSelectedEntryId("");
-      setAuthLoading(false);
+      router.push("/login");
       return;
     }
 
@@ -59,6 +58,7 @@ export default function Predictions() {
     } else {
       setSelectedEntryId("");
     }
+
 
     setAuthLoading(false);
   }
@@ -327,7 +327,7 @@ export default function Predictions() {
     }
   }
 
-  if (!mounted) return null;
+  if (!mounted || authLoading) return null;
 
   return (
     <main className="min-h-screen bg-green-950 text-white">

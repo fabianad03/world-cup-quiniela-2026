@@ -4,179 +4,152 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
-const ADMIN_PASSWORD = "6552792fd";
+const ADMIN_PASSWORD = "admin123"; // change this
 
-export default function Admin() {
+export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
-  const [inputPassword, setInputPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [teamA, setTeamA] = useState("");
-  const [teamB, setTeamB] = useState("");
-  const [round, setRound] = useState("");
-  const [kickoff, setKickoff] = useState("");
   const [matches, setMatches] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
-  const [scores, setScores] = useState<any>({});
-  const [status, setStatus] = useState<any>({});
+  const [profiles, setProfiles] = useState<any[]>([]);
 
-  async function loadMatches() {
-    const { data } = await supabase.from("matches").select("*");
-    setMatches(data || []);
-  }
+  const [roundName, setRoundName] = useState("");
+  const [teamA, setTeamA] = useState("");
+  const [teamB, setTeamB] = useState("");
+  const [kickoff, setKickoff] = useState("");
 
-  async function loadEntries() {
-    const { data } = await supabase.from("entries").select("*");
-    setEntries(data || []);
+  async function loadData() {
+    const { data: matchesData } = await supabase
+      .from("matches")
+      .select("*")
+      .order("kickoff", { ascending: true });
+
+    const { data: entriesData } = await supabase
+      .from("entries")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .order("email", { ascending: true });
+
+    setMatches(matchesData || []);
+    setEntries(entriesData || []);
+    setProfiles(profilesData || []);
   }
 
   useEffect(() => {
     if (authorized) {
-      loadMatches();
-      loadEntries();
+      loadData();
     }
   }, [authorized]);
 
-  async function handleCreateMatch() {
-    if (!teamA || !teamB || !round || !kickoff) return;
+  function handleLogin() {
+    if (password === ADMIN_PASSWORD) {
+      setAuthorized(true);
+      setMessage("");
+    } else {
+      setMessage("Incorrect admin password.");
+    }
+  }
 
-    await supabase.from("matches").insert([
+  async function handleCreateMatch() {
+    setMessage("");
+
+    if (!roundName || !teamA || !teamB || !kickoff) {
+      setMessage("Please fill in all match fields.");
+      return;
+    }
+
+    const { error } = await supabase.from("matches").insert([
       {
+        round_name: roundName,
         team_a: teamA,
         team_b: teamB,
-        round_name: round,
-        kickoff: kickoff,
+        kickoff,
+        score_a: null,
+        score_b: null,
         is_finished: false,
       },
     ]);
 
+    if (error) {
+      setMessage(`Error creating match: ${error.message}`);
+      return;
+    }
+
+    setRoundName("");
     setTeamA("");
     setTeamB("");
-    setRound("");
     setKickoff("");
-    loadMatches();
+    setMessage("Match created successfully.");
+    await loadData();
   }
 
-  function handleScoreChange(matchId: string, team: "a" | "b", value: string) {
-    setScores((prev: any) => ({
-      ...prev,
-      [matchId]: {
-        ...prev[matchId],
-        [team]: value,
-      },
-    }));
-
-    setStatus((prev: any) => ({
-      ...prev,
-      [matchId]: "",
-    }));
-  }
-
-  async function handleSetResult(matchId: string) {
-    setStatus((prev: any) => ({
-      ...prev,
-      [matchId]: "Saving...",
-    }));
-
-    const score = scores[matchId];
-
-    if (
-      !score ||
-      score.a === undefined ||
-      score.b === undefined ||
-      score.a === "" ||
-      score.b === ""
-    ) {
-      setStatus((prev: any) => ({
-        ...prev,
-        [matchId]: "Enter both scores.",
-      }));
-      return;
-    }
-
-    if (Number(score.a) < 0 || Number(score.b) < 0) {
-      setStatus((prev: any) => ({
-        ...prev,
-        [matchId]: "Scores cannot be negative.",
-      }));
-      return;
-    }
-
+  async function handleUpdateMatch(matchId: string, updates: any) {
     const { error } = await supabase
       .from("matches")
-      .update({
-        score_a: Number(score.a),
-        score_b: Number(score.b),
-        is_finished: true,
-      })
+      .update(updates)
       .eq("id", matchId);
 
     if (error) {
-      setStatus((prev: any) => ({
-        ...prev,
-        [matchId]: `Error: ${error.message}`,
-      }));
-    } else {
-      setStatus((prev: any) => ({
-        ...prev,
-        [matchId]: "Result saved!",
-      }));
-
-      loadMatches();
-
-      setTimeout(() => {
-        setStatus((prev: any) => ({
-          ...prev,
-          [matchId]: "",
-        }));
-      }, 2000);
+      setMessage(`Error updating match: ${error.message}`);
+      return;
     }
+
+    setMessage("Match updated.");
+    await loadData();
   }
 
-  async function togglePaid(entry: any) {
-    await supabase
+  async function handleTogglePaid(entryId: string, currentPaid: boolean) {
+    const { error } = await supabase
       .from("entries")
-      .update({ paid: !entry.paid })
-      .eq("id", entry.id);
+      .update({ paid: !currentPaid })
+      .eq("id", entryId);
 
-    loadEntries();
+    if (error) {
+      setMessage(`Error updating entry: ${error.message}`);
+      return;
+    }
+
+    setMessage("Entry payment status updated.");
+    await loadData();
+  }
+
+  function getUserEmail(userId: string) {
+    const profile = profiles.find((p) => p.id === userId);
+    return profile?.email || userId;
   }
 
   if (!authorized) {
     return (
-      <main className="min-h-screen bg-green-950 text-white flex items-center justify-center px-6">
-        <div className="w-full max-w-md border border-white/20 rounded-2xl bg-white/5 p-8">
-          <h1 className="text-3xl font-bold mb-6 text-center">Admin Access</h1>
+      <main className="min-h-screen bg-green-950 text-white">
+        <Navbar />
 
-          <input
-            type="password"
-            placeholder="Enter admin password"
-            value={inputPassword}
-            onChange={(e) => {
-              setInputPassword(e.target.value);
-              setLoginError("");
-            }}
-            className="w-full p-3 rounded bg-white/10 border border-white/20 mb-4"
-          />
+        <div className="max-w-md mx-auto p-10">
+          <h1 className="text-4xl font-bold mb-8">Admin Login</h1>
 
-          <button
-            onClick={() => {
-              if (inputPassword === ADMIN_PASSWORD) {
-                setAuthorized(true);
-              } else {
-                setLoginError("Incorrect password.");
-              }
-            }}
-            className="w-full py-3 rounded bg-white text-green-950 font-semibold"
-          >
-            Enter
-          </button>
+          <div className="p-6 rounded-2xl border border-white/20 bg-white/5 space-y-4">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter admin password"
+              className="w-full p-3 rounded bg-white/10 border border-white/20"
+            />
 
-          {loginError && (
-            <p className="mt-4 text-sm text-red-300 text-center">
-              {loginError}
-            </p>
-          )}
+            <button
+              onClick={handleLogin}
+              className="w-full px-5 py-3 rounded bg-white text-green-950 font-semibold"
+            >
+              Enter
+            </button>
+
+            {message && <p className="text-sm">{message}</p>}
+          </div>
         </div>
       </main>
     );
@@ -186,141 +159,98 @@ export default function Admin() {
     <main className="min-h-screen bg-green-950 text-white">
       <Navbar />
 
-      <div className="max-w-2xl mx-auto p-10">
-        <h1 className="text-4xl font-bold mb-8">Admin Panel</h1>
+      <div className="max-w-6xl mx-auto p-10 space-y-10">
+        <h1 className="text-4xl font-bold">Admin Panel</h1>
 
-        <div className="space-y-4 mb-12">
-          <h2 className="text-2xl font-semibold">Create Match</h2>
+        {message && (
+          <p className="text-sm bg-white/10 border border-white/20 rounded p-3">
+            {message}
+          </p>
+        )}
 
-          <input
-            type="text"
-            placeholder="Team A"
-            value={teamA}
-            onChange={(e) => setTeamA(e.target.value)}
-            className="w-full p-3 rounded bg-white/10 border border-white/20"
-          />
+        <section className="p-6 rounded-2xl border border-white/20 bg-white/5">
+          <h2 className="text-2xl font-semibold mb-4">Create Match</h2>
 
-          <input
-            type="text"
-            placeholder="Team B"
-            value={teamB}
-            onChange={(e) => setTeamB(e.target.value)}
-            className="w-full p-3 rounded bg-white/10 border border-white/20"
-          />
+          <div className="grid md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              value={roundName}
+              onChange={(e) => setRoundName(e.target.value)}
+              placeholder="Round name"
+              className="p-3 rounded bg-white/10 border border-white/20"
+            />
 
-          <input
-            type="text"
-            placeholder="Round"
-            value={round}
-            onChange={(e) => setRound(e.target.value)}
-            className="w-full p-3 rounded bg-white/10 border border-white/20"
-          />
+            <input
+              type="datetime-local"
+              value={kickoff}
+              onChange={(e) => setKickoff(e.target.value)}
+              className="p-3 rounded bg-white/10 border border-white/20"
+            />
 
-          <input
-            type="datetime-local"
-            value={kickoff}
-            onChange={(e) => setKickoff(e.target.value)}
-            className="w-full p-3 rounded bg-white/10 border border-white/20"
-          />
+            <input
+              type="text"
+              value={teamA}
+              onChange={(e) => setTeamA(e.target.value)}
+              placeholder="Team A"
+              className="p-3 rounded bg-white/10 border border-white/20"
+            />
+
+            <input
+              type="text"
+              value={teamB}
+              onChange={(e) => setTeamB(e.target.value)}
+              placeholder="Team B"
+              className="p-3 rounded bg-white/10 border border-white/20"
+            />
+          </div>
 
           <button
             onClick={handleCreateMatch}
-            className="w-full py-3 rounded bg-white text-green-950 font-semibold"
+            className="mt-4 px-5 py-3 rounded bg-white text-green-950 font-semibold"
           >
             Create Match
           </button>
-        </div>
+        </section>
 
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Set Results</h2>
+        <section className="p-6 rounded-2xl border border-white/20 bg-white/5">
+          <h2 className="text-2xl font-semibold mb-4">Manage Matches</h2>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {matches.map((match) => (
-              <div
+              <MatchRow
                 key={match.id}
-                className="p-4 border border-white/20 rounded-xl bg-white/5"
-              >
-                <p className="mb-2 font-semibold">
-                  {match.team_a} vs {match.team_b}
-                </p>
-
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="A"
-                    className="w-16 p-2 text-center rounded bg-white/10"
-                    onChange={(e) =>
-                      handleScoreChange(match.id, "a", e.target.value)
-                    }
-                  />
-
-                  <span>-</span>
-
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="B"
-                    className="w-16 p-2 text-center rounded bg-white/10"
-                    onChange={(e) =>
-                      handleScoreChange(match.id, "b", e.target.value)
-                    }
-                  />
-
-                  <button
-                    onClick={() => handleSetResult(match.id)}
-                    className="ml-4 px-3 py-2 rounded bg-white text-green-950 font-semibold"
-                  >
-                    Set Result
-                  </button>
-                </div>
-
-                {status[match.id] && (
-                  <p
-                    className={`mt-2 text-sm ${
-                      status[match.id].includes("saved")
-                        ? "text-green-300"
-                        : status[match.id].includes("Saving")
-                        ? "text-yellow-300"
-                        : "text-red-300"
-                    }`}
-                  >
-                    {status[match.id]}
-                  </p>
-                )}
-
-                {match.is_finished && (
-                  <p className="text-green-300 mt-2">
-                    Final: {match.score_a} - {match.score_b}
-                  </p>
-                )}
-              </div>
+                match={match}
+                onSave={handleUpdateMatch}
+              />
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="mt-12">
+        <section className="p-6 rounded-2xl border border-white/20 bg-white/5">
           <h2 className="text-2xl font-semibold mb-4">Manage Entries</h2>
 
           <div className="space-y-4">
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="flex justify-between items-center p-4 border border-white/20 rounded-xl bg-white/5"
+                className="p-4 rounded-xl border border-white/20 bg-white/5 flex items-center justify-between"
               >
                 <div>
-                  <p className="font-semibold">{entry.entry_name}</p>
+                  <p className="text-lg font-semibold">{entry.entry_name}</p>
                   <p className="text-sm text-white/70">
-                    {entry.paid ? "Paid" : "Not paid"}
+                    Email: {getUserEmail(entry.user_id)}
+                  </p>
+                  <p className="text-sm text-white/70">
+                    Status: {entry.paid ? "Paid" : "Not paid"}
                   </p>
                 </div>
 
                 <button
-                  onClick={() => togglePaid(entry)}
+                  onClick={() => handleTogglePaid(entry.id, entry.paid)}
                   className={`px-4 py-2 rounded font-semibold ${
                     entry.paid
                       ? "bg-red-400 text-green-950"
-                      : "bg-green-400 text-green-950"
+                      : "bg-white text-green-950"
                   }`}
                 >
                   {entry.paid ? "Mark Unpaid" : "Mark Paid"}
@@ -328,8 +258,84 @@ export default function Admin() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </main>
+  );
+}
+
+function MatchRow({
+  match,
+  onSave,
+}: {
+  match: any;
+  onSave: (matchId: string, updates: any) => Promise<void>;
+}) {
+  const [scoreA, setScoreA] = useState(
+    match.score_a === null || match.score_a === undefined
+      ? ""
+      : String(match.score_a)
+  );
+  const [scoreB, setScoreB] = useState(
+    match.score_b === null || match.score_b === undefined
+      ? ""
+      : String(match.score_b)
+  );
+  const [isFinished, setIsFinished] = useState(match.is_finished);
+
+  async function handleSave() {
+    await onSave(match.id, {
+      score_a: scoreA === "" ? null : Number(scoreA),
+      score_b: scoreB === "" ? null : Number(scoreB),
+      is_finished: isFinished,
+    });
+  }
+
+  return (
+    <div className="p-4 rounded-xl border border-white/20 bg-white/5">
+      <p className="text-sm text-white/70 mb-1">{match.round_name}</p>
+      <p className="text-lg font-semibold mb-2">
+        {match.team_a} vs {match.team_b}
+      </p>
+      <p className="text-sm text-white/70 mb-4">
+        Kickoff: {new Date(match.kickoff).toLocaleString()}
+      </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="number"
+          min={0}
+          value={scoreA}
+          onChange={(e) => setScoreA(e.target.value)}
+          placeholder="Score A"
+          className="w-24 p-2 rounded bg-white/10 border border-white/20"
+        />
+
+        <input
+          type="number"
+          min={0}
+          value={scoreB}
+          onChange={(e) => setScoreB(e.target.value)}
+          placeholder="Score B"
+          className="w-24 p-2 rounded bg-white/10 border border-white/20"
+        />
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isFinished}
+            onChange={(e) => setIsFinished(e.target.checked)}
+          />
+          Finished
+        </label>
+
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 rounded bg-white text-green-950 font-semibold"
+        >
+          Save Match
+        </button>
+      </div>
+    </div>
   );
 }
