@@ -50,80 +50,89 @@ export default function Navbar() {
     (language === "es" ? "Usuario" : "User");
 
   return (
-    <nav className="flex items-center justify-between px-8 py-4 border-b border-white/20">
-      <h1 className="text-2xl font-bold">
-        {language === "es"
-          ? "Quiniela del Mundial 2026"
-          : "World Cup Quiniela 2026"}
-      </h1>
+    <nav className="border-b border-white/20 px-4 py-4 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-7xl flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="text-center md:text-left">
+          <h1 className="text-xl sm:text-2xl font-bold break-words">
+            {language === "es"
+              ? "Quiniela del Mundial 2026"
+              : "World Cup Quiniela 2026"}
+          </h1>
+        </div>
 
-      <div className="flex gap-6 text-sm font-medium items-center">
-        <Link href="/" className="hover:underline">
-          {language === "es" ? "Inicio" : "Home"}
-        </Link>
+        <div className="flex flex-col gap-3 md:items-end">
+          <div className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 text-sm font-medium">
+            <Link href="/" className="hover:underline">
+              {language === "es" ? "Inicio" : "Home"}
+            </Link>
 
-        <Link href="/predictions" className="hover:underline">
-          {language === "es" ? "Predicciones" : "Predictions"}
-        </Link>
+            <Link href="/predictions" className="hover:underline">
+              {language === "es" ? "Predicciones" : "Predictions"}
+            </Link>
 
-        <Link href="/leaderboard" className="hover:underline">
-          {language === "es" ? "Tabla" : "Leaderboard"}
-        </Link>
+            <Link href="/leaderboard" className="hover:underline">
+              {language === "es" ? "Tabla" : "Leaderboard"}
+            </Link>
 
-        <Link href="/entries" className="hover:underline">
-          {language === "es" ? "Entradas" : "Entries"}
-        </Link>
+            <Link href="/entries" className="hover:underline">
+              {language === "es" ? "Entradas" : "Entries"}
+            </Link>
+          </div>
 
-        {!authLoading && (
-          <>
-            {user ? (
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-3 text-sm">
+            {!authLoading && (
               <>
-                <span className="text-white/70 text-sm">
-                  {language === "es" ? "Hola," : "Hi,"} {userLabel}
-                </span>
+                {user ? (
+                  <>
+                    <span className="text-white/70 text-center sm:text-left">
+                      {language === "es" ? "Hola," : "Hi,"} {userLabel}
+                    </span>
 
-                <button
-                  onClick={handleLogout}
-                  className="px-3 py-1.5 rounded border border-white/20 hover:bg-white/10"
-                >
-                  {language === "es" ? "Cerrar sesión" : "Logout"}
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="hover:underline">
-                  {language === "es" ? "Iniciar sesión" : "Login"}
-                </Link>
-                <Link href="/signup" className="hover:underline">
-                  {language === "es" ? "Crear cuenta" : "Sign Up"}
-                </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="px-3 py-1.5 rounded border border-white/20 hover:bg-white/10"
+                    >
+                      {language === "es" ? "Cerrar sesión" : "Logout"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/login" className="hover:underline">
+                      {language === "es" ? "Iniciar sesión" : "Login"}
+                    </Link>
+
+                    <Link href="/signup" className="hover:underline">
+                      {language === "es" ? "Crear cuenta" : "Sign Up"}
+                    </Link>
+                  </>
+                )}
               </>
             )}
-          </>
-        )}
 
-        <div className="ml-4 flex items-center rounded-lg border border-white/20 overflow-hidden">
-          <button
-            onClick={() => setLanguage("en")}
-            className={`px-3 py-1.5 text-xs font-semibold transition ${
-              language === "en"
-                ? "bg-white text-green-950"
-                : "bg-transparent text-white hover:bg-white/10"
-            }`}
-          >
-            🇺🇸 EN
-          </button>
+            <div className="flex items-center rounded-lg border border-white/20 overflow-hidden">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`px-3 py-1.5 text-xs font-semibold transition ${
+                  language === "en"
+                    ? "bg-white text-green-950"
+                    : "bg-transparent text-white hover:bg-white/10"
+                }`}
+              >
+                🇺🇸 EN
+              </button>
 
-          <button
-            onClick={() => setLanguage("es")}
-            className={`px-3 py-1.5 text-xs font-semibold transition ${
-              language === "es"
-                ? "bg-white text-green-950"
-                : "bg-transparent text-white hover:bg-white/10"
-            }`}
-          >
-            🇪🇸 ES
-          </button>
+              <button
+                onClick={() => setLanguage("es")}
+                className={`px-3 py-1.5 text-xs font-semibold transition ${
+                  language === "es"
+                    ? "bg-white text-green-950"
+                    : "bg-transparent text-white hover:bg-white/10"
+                }`}
+              >
+                🇪🇸 ES
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </nav>

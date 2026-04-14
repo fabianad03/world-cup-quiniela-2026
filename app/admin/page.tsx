@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
-const ADMIN_PASSWORD = "admin123"; // change this
+const ADMIN_PASSWORD = "6552792fd";
 
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);

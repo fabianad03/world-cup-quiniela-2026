@@ -65,5 +65,11 @@ export default async function Leaderboard() {
     (a: any, b: any) => b.total_points - a.total_points
   );
 
-  return <LeaderboardClient leaderboard={leaderboard} />;
+  return (
+    <LeaderboardClient
+      leaderboard={leaderboard}
+      matches={matches || []}
+      predictions={predictions || []}
+    />
+  );
 }
