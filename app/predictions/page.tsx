@@ -8,9 +8,9 @@ import { translateRoundName, translateTeamName } from "@/lib/translate";
 import { useRouter } from "next/navigation";
 
 type MatchStatus =
-  | { type: "idle"; message?: "" }
-  | { type: "saving"; message?: "" }
-  | { type: "saved"; message?: "" }
+  | { type: "idle" }
+  | { type: "saving" }
+  | { type: "saved" }
   | { type: "error"; message: string };
 
 export default function Predictions() {
@@ -21,6 +21,7 @@ export default function Predictions() {
   const [selectedEntryId, setSelectedEntryId] = useState("");
   const [scores, setScores] = useState<any>({});
   const [saveStatus, setSaveStatus] = useState<Record<string, MatchStatus>>({});
+  const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
@@ -59,13 +60,14 @@ export default function Predictions() {
       setSelectedEntryId("");
     }
 
-
     setAuthLoading(false);
   }
 
   async function loadPredictions(entryId: string) {
     if (!entryId) {
       setScores({});
+      setSaveStatus({});
+      setEditing({});
       return;
     }
 
@@ -75,6 +77,8 @@ export default function Predictions() {
       .eq("entry_id", entryId);
 
     const formattedScores: any = {};
+    const savedStatuses: Record<string, MatchStatus> = {};
+    const editingState: Record<string, boolean> = {};
 
     predictionsData?.forEach((prediction) => {
       formattedScores[prediction.match_id] = {
@@ -82,9 +86,13 @@ export default function Predictions() {
         b: prediction.pred_b?.toString() ?? "",
         joker: prediction.joker ?? false,
       };
+      savedStatuses[prediction.match_id] = { type: "saved" };
+      editingState[prediction.match_id] = false;
     });
 
     setScores(formattedScores);
+    setSaveStatus(savedStatuses);
+    setEditing(editingState);
   }
 
   useEffect(() => {
@@ -101,6 +109,8 @@ export default function Predictions() {
       loadPredictions(selectedEntryId);
     } else {
       setScores({});
+      setSaveStatus({});
+      setEditing({});
     }
   }, [selectedEntryId]);
 
@@ -115,7 +125,10 @@ export default function Predictions() {
 
     setSaveStatus((prev) => ({
       ...prev,
-      [matchId]: { type: "idle" },
+      [matchId]:
+        prev[matchId]?.type === "saved" && !editing[matchId]
+          ? prev[matchId]
+          : { type: "idle" },
     }));
   }
 
@@ -126,6 +139,21 @@ export default function Predictions() {
         ...prev[matchId],
         joker: checked,
       },
+    }));
+
+    setSaveStatus((prev) => ({
+      ...prev,
+      [matchId]:
+        prev[matchId]?.type === "saved" && !editing[matchId]
+          ? prev[matchId]
+          : { type: "idle" },
+    }));
+  }
+
+  function handleEdit(matchId: string) {
+    setEditing((prev) => ({
+      ...prev,
+      [matchId]: true,
     }));
 
     setSaveStatus((prev) => ({
@@ -316,14 +344,12 @@ export default function Predictions() {
         [match.id]: { type: "saved" },
       }));
 
-      await loadPredictions(selectedEntryId);
+      setEditing((prev) => ({
+        ...prev,
+        [match.id]: false,
+      }));
 
-      setTimeout(() => {
-        setSaveStatus((prev) => ({
-          ...prev,
-          [match.id]: { type: "idle" },
-        }));
-      }, 2000);
+      await loadPredictions(selectedEntryId);
     }
   }
 
@@ -333,8 +359,10 @@ export default function Predictions() {
     <main className="min-h-screen bg-green-950 text-white">
       <Navbar />
 
-      <div className="p-10 max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">{t.predictions.title}</h1>
+      <div className="px-4 sm:px-6 py-8 sm:py-10 max-w-4xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">
+          {t.predictions.title}
+        </h1>
 
         {!authLoading && !userId && (
           <p className="mb-6 text-red-300">
@@ -351,7 +379,7 @@ export default function Predictions() {
           <select
             value={selectedEntryId}
             onChange={(e) => setSelectedEntryId(e.target.value)}
-            className="w-full max-w-sm p-3 rounded bg-white/10 border border-white/20"
+            className="w-full max-w-md p-3 rounded bg-white/10 border border-white/20"
             disabled={authLoading || !userId || entries.length === 0}
           >
             {entries.length === 0 ? (
@@ -368,37 +396,43 @@ export default function Predictions() {
           </select>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {matches.map((match) => {
             const isLocked = new Date() > new Date(match.kickoff);
+            const hasSavedPrediction = saveStatus[match.id]?.type === "saved";
+            const isEditing = editing[match.id] ?? !hasSavedPrediction;
+
             const isDisabled =
               authLoading ||
               !userId ||
               !selectedEntryId ||
               isLocked ||
-              !selectedEntry?.paid;
+              !selectedEntry?.paid ||
+              !isEditing;
 
             const status = saveStatus[match.id] || { type: "idle" as const };
 
             return (
               <div
                 key={match.id}
-                className="border border-white/20 rounded-xl p-6 bg-white/5"
+                className="border border-white/20 rounded-xl p-4 sm:p-6 bg-white/5"
               >
-                <p className="text-sm text-white/70 mb-2">
+                <p className="text-xs sm:text-sm text-white/70 mb-2">
                   {translateRoundName(match.round_name, language)}
                 </p>
 
-                <div className="flex items-center justify-between text-xl font-semibold">
-                  <span>{translateTeamName(match.team_a, language)}</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-lg sm:text-xl font-semibold">
+                  <span className="text-center sm:text-left">
+                    {translateTeamName(match.team_a, language)}
+                  </span>
 
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center justify-center">
                     <input
                       type="number"
                       min={0}
                       disabled={isDisabled}
                       value={scores[match.id]?.a || ""}
-                      className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                      className="w-16 sm:w-20 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
                       placeholder="0"
                       onChange={(e) =>
                         handleChange(match.id, "a", e.target.value)
@@ -412,7 +446,7 @@ export default function Predictions() {
                       min={0}
                       disabled={isDisabled}
                       value={scores[match.id]?.b || ""}
-                      className="w-16 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                      className="w-16 sm:w-20 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
                       placeholder="0"
                       onChange={(e) =>
                         handleChange(match.id, "b", e.target.value)
@@ -420,10 +454,12 @@ export default function Predictions() {
                     />
                   </div>
 
-                  <span>{translateTeamName(match.team_b, language)}</span>
+                  <span className="text-center sm:text-right">
+                    {translateTeamName(match.team_b, language)}
+                  </span>
                 </div>
 
-                <p className="text-sm text-white/70 mt-2">
+                <p className="text-xs sm:text-sm text-white/70 mt-3">
                   {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
                   {new Date(match.kickoff).toLocaleString(
                     language === "es" ? "es-ES" : "en-US",
@@ -471,42 +507,48 @@ export default function Predictions() {
                   </label>
                 </div>
 
-                <div className="mt-4 flex items-center gap-3">
-                  <button
-                    onClick={() => handleSave(match)}
-                    disabled={isDisabled}
-                    className={`px-4 py-2 rounded font-semibold ${
-                      isDisabled
-                        ? "bg-gray-500 cursor-not-allowed"
-                        : status.type === "saving"
-                        ? "bg-yellow-300 text-green-950"
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  {hasSavedPrediction && !isEditing ? (
+                    <>
+                      <button
+                        onClick={() => handleEdit(match.id)}
+                        disabled={isLocked || !selectedEntry?.paid}
+                        className="w-full sm:w-auto px-4 py-2 rounded font-semibold bg-yellow-300 text-green-950 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                      >
+                        {language === "es" ? "Editar" : "Edit"}
+                      </button>
+
+                      <span className="text-sm text-green-300">
+                        {language === "es"
+                          ? "Predicción guardada"
+                          : "Prediction saved"}
+                      </span>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleSave(match)}
+                      disabled={
+                        authLoading ||
+                        !userId ||
+                        !selectedEntryId ||
+                        isLocked ||
+                        !selectedEntry?.paid
+                      }
+                      className={`w-full sm:w-auto px-4 py-2 rounded font-semibold ${
+                        status.type === "saving"
+                          ? "bg-yellow-300 text-green-950"
+                          : status.type === "saved"
+                          ? "bg-green-400 text-green-950"
+                          : "bg-white text-green-950"
+                      } disabled:bg-gray-500 disabled:cursor-not-allowed`}
+                    >
+                      {status.type === "saving"
+                        ? t.common.saving
                         : status.type === "saved"
-                        ? "bg-green-400 text-green-950"
-                        : "bg-white text-green-950"
-                    }`}
-                  >
-                    {isLocked
-                      ? t.predictions.locked
-                      : authLoading
-                      ? language === "es"
-                        ? "Cargando..."
-                        : "Loading..."
-                      : !userId
-                      ? language === "es"
-                        ? "Inicia sesión"
-                        : "Log in"
-                      : !selectedEntryId
-                      ? language === "es"
-                        ? "Selecciona entrada"
-                        : "Select entry"
-                      : !selectedEntry?.paid
-                      ? t.common.unpaid
-                      : status.type === "saving"
-                      ? t.common.saving
-                      : status.type === "saved"
-                      ? t.common.saved
-                      : t.common.save}
-                  </button>
+                        ? t.common.saved
+                        : t.common.save}
+                    </button>
+                  )}
 
                   {status.type === "error" && (
                     <p className="text-sm text-red-300">{status.message}</p>
