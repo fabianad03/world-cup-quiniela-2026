@@ -6,6 +6,19 @@ import { supabase } from "@/lib/supabase";
 
 const ADMIN_PASSWORD = "6552792fd";
 
+function localDateTimeToUTC(localValue: string) {
+  if (!localValue) return "";
+
+  const [datePart, timePart] = localValue.split("T");
+  if (!datePart || !timePart) return localValue;
+
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+
+  const localDate = new Date(year, month - 1, day, hours, minutes);
+  return localDate.toISOString();
+}
+
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [password, setPassword] = useState("");
@@ -64,12 +77,14 @@ export default function AdminPage() {
       return;
     }
 
+    const kickoffUTC = localDateTimeToUTC(kickoff);
+
     const { error } = await supabase.from("matches").insert([
       {
         round_name: roundName,
         team_a: teamA,
         team_b: teamB,
-        kickoff,
+        kickoff: kickoffUTC,
         score_a: null,
         score_b: null,
         is_finished: false,

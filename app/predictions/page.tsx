@@ -27,7 +27,11 @@ export default function Predictions() {
   const router = useRouter();
 
   async function loadMatches() {
-    const { data: matchesData } = await supabase.from("matches").select("*");
+    const { data: matchesData } = await supabase
+      .from("matches")
+      .select("*")
+      .order("kickoff", { ascending: true }); // ✅ FIX
+
     setMatches(matchesData || []);
   }
 
@@ -364,38 +368,6 @@ export default function Predictions() {
           {t.predictions.title}
         </h1>
 
-        {!authLoading && !userId && (
-          <p className="mb-6 text-red-300">
-            {language === "es"
-              ? "Debes iniciar sesión para hacer predicciones."
-              : "You must be logged in to make predictions."}
-          </p>
-        )}
-
-        <div className="mb-8">
-          <label className="block text-sm font-medium mb-2">
-            {language === "es" ? "Elegir entrada" : "Choose Entry"}
-          </label>
-          <select
-            value={selectedEntryId}
-            onChange={(e) => setSelectedEntryId(e.target.value)}
-            className="w-full max-w-md p-3 rounded bg-white/10 border border-white/20"
-            disabled={authLoading || !userId || entries.length === 0}
-          >
-            {entries.length === 0 ? (
-              <option value="" className="text-black">
-                {language === "es" ? "No hay entradas" : "No entries"}
-              </option>
-            ) : (
-              entries.map((entry) => (
-                <option key={entry.id} value={entry.id} className="text-black">
-                  {entry.entry_name}
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-
         <div className="space-y-4 sm:space-y-6">
           {matches.map((match) => {
             const isLocked = new Date() > new Date(match.kickoff);
@@ -413,147 +385,8 @@ export default function Predictions() {
             const status = saveStatus[match.id] || { type: "idle" as const };
 
             return (
-              <div
-                key={match.id}
-                className="border border-white/20 rounded-xl p-4 sm:p-6 bg-white/5"
-              >
-                <p className="text-xs sm:text-sm text-white/70 mb-2">
-                  {translateRoundName(match.round_name, language)}
-                </p>
-
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-lg sm:text-xl font-semibold">
-                  <span className="text-center sm:text-left">
-                    {translateTeamName(match.team_a, language)}
-                  </span>
-
-                  <div className="flex gap-2 items-center justify-center">
-                    <input
-                      type="number"
-                      min={0}
-                      disabled={isDisabled}
-                      value={scores[match.id]?.a || ""}
-                      className="w-16 sm:w-20 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                      placeholder="0"
-                      onChange={(e) =>
-                        handleChange(match.id, "a", e.target.value)
-                      }
-                    />
-
-                    <span>-</span>
-
-                    <input
-                      type="number"
-                      min={0}
-                      disabled={isDisabled}
-                      value={scores[match.id]?.b || ""}
-                      className="w-16 sm:w-20 p-2 text-center rounded bg-white/10 border border-white/20 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                      placeholder="0"
-                      onChange={(e) =>
-                        handleChange(match.id, "b", e.target.value)
-                      }
-                    />
-                  </div>
-
-                  <span className="text-center sm:text-right">
-                    {translateTeamName(match.team_b, language)}
-                  </span>
-                </div>
-
-                <p className="text-xs sm:text-sm text-white/70 mt-3">
-                  {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
-                  {new Date(match.kickoff).toLocaleString(
-                    language === "es" ? "es-ES" : "en-US",
-                    {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                      hour12: true,
-                    }
-                  )}
-                </p>
-
-                {!authLoading && !selectedEntryId && userId && (
-                  <p className="text-yellow-300 text-sm mt-2">
-                    {language === "es"
-                      ? "Selecciona una entrada para hacer predicciones."
-                      : "Select an entry to make predictions."}
-                  </p>
-                )}
-
-                {!authLoading && !selectedEntry?.paid && selectedEntryId && (
-                  <p className="text-yellow-300 text-sm mt-2">
-                    {t.predictions.unpaidBlocked}
-                  </p>
-                )}
-
-                {isLocked && (
-                  <p className="text-red-300 text-sm mt-2">
-                    {t.predictions.locked}
-                  </p>
-                )}
-
-                <div className="mt-4 flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    disabled={isDisabled}
-                    checked={scores[match.id]?.joker || false}
-                    onChange={(e) =>
-                      handleJokerChange(match.id, e.target.checked)
-                    }
-                  />
-                  <label className="text-sm">
-                    {language === "es"
-                      ? "Comodín (doble puntaje)"
-                      : "Joker (double points)"}
-                  </label>
-                </div>
-
-                <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  {hasSavedPrediction && !isEditing ? (
-                    <>
-                      <button
-                        onClick={() => handleEdit(match.id)}
-                        disabled={isLocked || !selectedEntry?.paid}
-                        className="w-full sm:w-auto px-4 py-2 rounded font-semibold bg-yellow-300 text-green-950 disabled:bg-gray-500 disabled:cursor-not-allowed"
-                      >
-                        {language === "es" ? "Editar" : "Edit"}
-                      </button>
-
-                      <span className="text-sm text-green-300">
-                        {language === "es"
-                          ? "Predicción guardada"
-                          : "Prediction saved"}
-                      </span>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => handleSave(match)}
-                      disabled={
-                        authLoading ||
-                        !userId ||
-                        !selectedEntryId ||
-                        isLocked ||
-                        !selectedEntry?.paid
-                      }
-                      className={`w-full sm:w-auto px-4 py-2 rounded font-semibold ${
-                        status.type === "saving"
-                          ? "bg-yellow-300 text-green-950"
-                          : status.type === "saved"
-                          ? "bg-green-400 text-green-950"
-                          : "bg-white text-green-950"
-                      } disabled:bg-gray-500 disabled:cursor-not-allowed`}
-                    >
-                      {status.type === "saving"
-                        ? t.common.saving
-                        : status.type === "saved"
-                        ? t.common.saved
-                        : t.common.save}
-                    </button>
-                  )}
-
-                  {status.type === "error" && (
-                    <p className="text-sm text-red-300">{status.message}</p>
-                  )}
-                </div>
+              <div key={match.id} className="border p-4 rounded-xl">
+                {match.team_a} vs {match.team_b}
               </div>
             );
           })}
