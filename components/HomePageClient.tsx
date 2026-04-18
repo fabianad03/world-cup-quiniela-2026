@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
@@ -49,7 +50,7 @@ export default function HomePageClient({
     (language === "es" ? "usuario" : "user");
 
   return (
-    <main className="min-h-screen bg-green-950 text-white">
+    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <PageTitle
         en="World Cup Quiniela 2026"
         es="Quiniela del Mundial 2026"
@@ -57,123 +58,207 @@ export default function HomePageClient({
 
       <Navbar />
 
-      <section className="px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
-        <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-          {language === "es"
-            ? "Quiniela del Mundial 2026"
-            : "World Cup Quiniela 2026"}
-        </h2>
+      <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.10),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_28%)]" />
+        <div className="pointer-events-none absolute -top-20 right-0 h-56 w-56 rounded-full bg-yellow-300/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 rounded-full bg-green-400/10 blur-3xl" />
 
-        {!authLoading && user && (
-          <p className="text-white/70 mb-4 text-sm sm:text-base">
-            {language === "es"
-              ? `Bienvenido, ${userLabel}.`
-              : `Welcome, ${userLabel}.`}
-          </p>
-        )}
+        <div className="relative mx-auto max-w-6xl">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-8 shadow-2xl shadow-black/25 backdrop-blur-sm sm:px-8 sm:py-12 lg:px-12">
+            <div className="mx-auto max-w-4xl text-center">
+              <div className="mb-6 flex justify-center">
+                <div className="flex h-28 w-28 items-center justify-center rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_0_40px_rgba(250,204,21,0.08)] backdrop-blur-sm sm:h-32 sm:w-32">
+                  <Image
+                    src="/world-cup-26-logo.jpg"
+                    alt="World Cup 26 logo"
+                    width={96}
+                    height={96}
+                    className="h-20 w-20 object-contain sm:h-24 sm:w-24"
+                    priority
+                  />
+                </div>
+              </div>
 
-        <p className="max-w-2xl mx-auto text-base sm:text-lg text-white/80 mb-10">
-          {language === "es"
-            ? "Predice los marcadores de los partidos, compite con familiares y amigos, usa tu Comodín con estrategia y sube en la tabla de posiciones durante todo el torneo."
-            : "Predict match scores, compete with family and friends, use your Joker wisely, and climb the leaderboard throughout the tournament."}
-        </p>
+              <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-yellow-300/30 bg-yellow-300/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
+                  {language === "es" ? "Competencia oficial" : "Official competition"}
+                </span>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12">
-          <Link
-            href="/predictions"
-            className="px-6 py-3 rounded-xl bg-white text-green-950 font-semibold w-full sm:w-auto"
-          >
-            {language === "es" ? "Hacer Predicciones" : "Make Predictions"}
-          </Link>
+                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  {language === "es" ? "Hasta 5 entradas por usuario" : "Up to 5 entries per user"}
+                </span>
+              </div>
 
-          <Link
-            href="/leaderboard"
-            className="px-6 py-3 rounded-xl border border-white/30 font-semibold w-full sm:w-auto"
-          >
-            {language === "es" ? "Ver Tabla de Posiciones" : "View Leaderboard"}
-          </Link>
-        </div>
+              <h1 className="text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                {language === "es" ? (
+                  <>
+                    Predice. <span className="text-yellow-300">Compite.</span>{" "}
+                    Gana.
+                  </>
+                ) : (
+                  <>
+                    Predict. <span className="text-yellow-300">Compete.</span>{" "}
+                    Win.
+                  </>
+                )}
+              </h1>
 
-        <div className="max-w-5xl mx-auto grid gap-6 md:grid-cols-3 text-left mb-14">
-          <div className="rounded-2xl border border-white/20 bg-white/5 p-5 sm:p-6">
-            <h3 className="text-xl font-semibold mb-3">
-              {language === "es" ? "Cómo funciona" : "How it works"}
-            </h3>
-            <p className="text-white/80 text-sm sm:text-base">
-              {language === "es"
-                ? "Elige una de tus entradas, predice el marcador de cada partido y guarda tus selecciones antes del inicio."
-                : "Choose one of your entries, predict the score for each match, and save your picks before kickoff."}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/20 bg-white/5 p-5 sm:p-6">
-            <h3 className="text-xl font-semibold mb-3">
-              {language === "es" ? "Puntuación" : "Scoring"}
-            </h3>
-            <p className="text-white/80 text-sm sm:text-base">
-              {language === "es"
-                ? "Marcador exacto = 5 puntos, ganador correcto = 3 puntos, empate correcto = 2 puntos, y el Comodín duplica tus puntos."
-                : "Exact score = 5 points, correct winner = 3 points, correct draw = 2 points, and Joker doubles your points."}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/20 bg-white/5 p-5 sm:p-6">
-            <h3 className="text-xl font-semibold mb-3">
-              {language === "es" ? "Regla importante" : "Important rule"}
-            </h3>
-            <p className="text-white/80 text-sm sm:text-base">
-              {language === "es"
-                ? "Las predicciones se bloquean automáticamente una vez que empieza el partido, así que asegúrate de enviar tus selecciones a tiempo."
-                : "Predictions lock automatically once a match starts, so make sure you submit your picks on time."}
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-5xl mx-auto mt-8 mb-14">
-          <PrizePoolCard />
-        </div>
-
-        <div className="max-w-3xl mx-auto">
-          <h3 className="text-2xl font-semibold mb-6">
-            {language === "es" ? "Próximos Partidos" : "Upcoming Matches"}
-          </h3>
-
-          {matches.length === 0 && (
-            <p className="text-white/70 text-sm sm:text-base">
-              {language === "es"
-                ? "Todavía no se han agregado partidos."
-                : "No matches added yet."}
-            </p>
-          )}
-
-          <div className="space-y-4">
-            {matches.map((match) => (
-              <div
-                key={match.id}
-                className="rounded-2xl border border-white/20 bg-white/5 p-4 sm:p-5 text-left"
-              >
-                <p className="text-sm text-white/70 mb-2">
-                  {translateRoundName(match.round_name, language)}
+              {!authLoading && user && (
+                <p className="mt-4 text-sm text-white/70 sm:text-base">
+                  {language === "es"
+                    ? `Bienvenido, ${userLabel}.`
+                    : `Welcome, ${userLabel}.`}
                 </p>
+              )}
 
-                <p className="text-lg sm:text-xl font-semibold">
-                  {translateTeamName(match.team_a, language)} vs{" "}
-                  {translateTeamName(match.team_b, language)}
-                </p>
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/80 sm:text-lg">
+                {language === "es"
+                  ? "Predice los marcadores de los partidos, usa tu Comodín con estrategia y compite con familiares y amigos para subir en la tabla durante todo el Mundial."
+                  : "Predict match scores, use your Joker strategically, and compete with family and friends to climb the leaderboard throughout the World Cup."}
+              </p>
 
-                <p className="text-sm text-white/70 mt-2">
-                  {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
-                  {new Date(match.kickoff).toLocaleString(
-                    language === "es" ? "es-ES" : "en-US",
-                    {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                      hour12: true,
-                    }
-                  )}
+              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
+                <Link
+                  href="/predictions"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-green-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-yellow-200 sm:text-base"
+                >
+                  {language === "es" ? "Hacer Predicciones" : "Make Predictions"}
+                </Link>
+
+                <Link
+                  href="/leaderboard"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:border-yellow-300/40 hover:bg-white/10 sm:text-base"
+                >
+                  {language === "es" ? "Ver Tabla de Posiciones" : "View Leaderboard"}
+                </Link>
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm">
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-white/75">
+                  {language === "es"
+                    ? "🏆 Premios para el Top 5"
+                    : "🏆 Prizes for the Top 5"}
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-white/75">
+                  {language === "es"
+                    ? "⏳ Las predicciones cierran al iniciar el partido"
+                    : "⏳ Predictions lock at kickoff"}
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-white/75">
+                  {language === "es"
+                    ? "⚽ Una competencia para disfrutar todo el torneo"
+                    : "⚽ A competition to enjoy the whole tournament"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-3">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-left shadow-xl shadow-black/15 backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/[0.07]">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-300/15 text-2xl">
+                ⚽
+              </div>
+              <h3 className="mb-3 text-xl font-bold">
+                {language === "es" ? "Cómo funciona" : "How it works"}
+              </h3>
+              <p className="text-sm leading-7 text-white/80 sm:text-base">
+                {language === "es"
+                  ? "Elige una de tus entradas, predice el marcador de cada partido y guarda tus selecciones antes del inicio."
+                  : "Choose one of your entries, predict the score for each match, and save your picks before kickoff."}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-left shadow-xl shadow-black/15 backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/[0.07]">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-400/15 text-2xl">
+                🏆
+              </div>
+              <h3 className="mb-3 text-xl font-bold">
+                {language === "es" ? "Puntuación" : "Scoring"}
+              </h3>
+              <p className="text-sm leading-7 text-white/80 sm:text-base">
+                {language === "es"
+                  ? "Marcador exacto = 5 puntos, ganador correcto = 3 puntos, empate correcto = 2 puntos, y el Comodín duplica tus puntos."
+                  : "Exact score = 5 points, correct winner = 3 points, correct draw = 2 points, and Joker doubles your points."}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-left shadow-xl shadow-black/15 backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/[0.07]">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-2xl">
+                ⏱️
+              </div>
+              <h3 className="mb-3 text-xl font-bold">
+                {language === "es" ? "Regla importante" : "Important rule"}
+              </h3>
+              <p className="text-sm leading-7 text-white/80 sm:text-base">
+                {language === "es"
+                  ? "Las predicciones se bloquean automáticamente una vez que empieza el partido, así que asegúrate de enviar tus selecciones a tiempo."
+                  : "Predictions lock automatically once a match starts, so make sure you submit your picks on time."}
+              </p>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-10 max-w-5xl">
+            <PrizePoolCard />
+          </div>
+
+          <div className="mx-auto mt-14 max-w-4xl">
+            <div className="mb-6 text-center">
+              <h3 className="text-2xl font-bold sm:text-3xl">
+                {language === "es" ? "Próximos Partidos" : "Upcoming Matches"}
+              </h3>
+              <p className="mt-2 text-sm text-white/65 sm:text-base">
+                {language === "es"
+                  ? "Prepárate para tus próximas predicciones."
+                  : "Get ready for your next predictions."}
+              </p>
+            </div>
+
+            {matches.length === 0 && (
+              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-center text-white/70 shadow-xl shadow-black/10">
+                <p className="text-sm sm:text-base">
+                  {language === "es"
+                    ? "Todavía no se han agregado partidos."
+                    : "No matches added yet."}
                 </p>
               </div>
-            ))}
+            )}
+
+            <div className="space-y-4">
+              {matches.map((match) => (
+                <div
+                  key={match.id}
+                  className="group rounded-3xl border border-white/10 bg-white/[0.05] p-5 text-left shadow-xl shadow-black/15 transition hover:-translate-y-1 hover:border-yellow-300/20 hover:bg-white/[0.07]"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                      {translateRoundName(match.round_name, language)}
+                    </p>
+
+                    <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-200/80">
+                      {language === "es" ? "Próximo partido" : "Next match"}
+                    </p>
+                  </div>
+
+                  <p className="text-lg font-bold sm:text-2xl">
+                    {translateTeamName(match.team_a, language)}{" "}
+                    <span className="mx-2 text-white/50">vs</span>{" "}
+                    {translateTeamName(match.team_b, language)}
+                  </p>
+
+                  <p className="mt-3 text-sm text-white/70">
+                    {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
+                    {new Date(match.kickoff).toLocaleString(
+                      language === "es" ? "es-ES" : "en-US",
+                      {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                        hour12: true,
+                      }
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

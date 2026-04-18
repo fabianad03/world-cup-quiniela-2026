@@ -252,158 +252,235 @@ export default function EntriesPage() {
   if (!mounted || authLoading) return null;
 
   return (
-    <main className="min-h-screen bg-green-950 text-white">
+    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-8">
-          {t.entries.title}
-        </h1>
+      <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-12">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_28%)]" />
+        <div className="pointer-events-none absolute -top-16 right-0 h-52 w-52 rounded-full bg-yellow-300/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-green-400/10 blur-3xl" />
 
-        <div className="mb-10 p-5 sm:p-6 rounded-2xl border border-white/20 bg-white/5">
-          <h2 className="text-2xl font-semibold mb-4">
-            {t.entries.createTitle}
-          </h2>
+        <div className="relative mx-auto max-w-5xl">
+          <div className="mb-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
+            <div className="text-center">
+              <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
+                {language === "es" ? "Tus entradas" : "Your entries"}
+              </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={entryName}
-              onChange={(e) => setEntryName(e.target.value)}
-              placeholder={t.entries.placeholder}
-              className="flex-1 p-3 rounded bg-white/10 border border-white/20"
-            />
+              <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
+                {t.entries.title}
+              </h1>
 
-            <button
-              onClick={handleCreateEntry}
-              className="px-5 py-3 rounded bg-white text-green-950 font-semibold"
-            >
-              {t.entries.create}
-            </button>
+              <p className="mx-auto mt-3 max-w-2xl text-sm text-white/75 sm:text-base">
+                {language === "es"
+                  ? "Crea hasta 5 entradas, revisa sus puntos, mira su posición y consulta el detalle completo de cada predicción."
+                  : "Create up to 5 entries, review their points, track their placement, and view the full breakdown of each prediction."}
+              </p>
+            </div>
           </div>
 
-          <p className="text-sm text-white/70 mt-3">
-            {entries.length}/5 {t.entries.used}
-          </p>
+          <div className="mb-10 rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-2xl font-bold">
+                {t.entries.createTitle}
+              </h2>
 
-          {message && <p className="mt-3 text-sm">{message}</p>}
-        </div>
-
-        <div className="space-y-5">
-          {entries.map((entry) => {
-            const breakdown = entryBreakdowns[entry.id];
-            const totalPoints = breakdown?.totalPoints || 0;
-            const items = breakdown?.items || [];
-            const placement = placementByEntry[entry.id];
-
-            return (
-              <div
-                key={entry.id}
-                className="rounded-2xl border border-white/20 bg-white/5 p-5 sm:p-6"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-                  <div>
-                    <p className="text-xl font-semibold">{entry.entry_name}</p>
-                    <p className="text-sm text-white/70 mt-1">
-                      {entry.paid ? t.common.paid : t.common.unpaid}
-                    </p>
-                    <p className="text-sm text-white/70 mt-1">
-                      {entry.paid
-                        ? placement
-                          ? getPlaceLabel(placement, language)
-                          : language === "es"
-                          ? "Sin posición todavía"
-                          : "No placement yet"
-                        : language === "es"
-                        ? "No aparece en la tabla hasta estar pagada"
-                        : "Does not appear on leaderboard until paid"}
-                    </p>
-                  </div>
-
-                  <div className="text-left sm:text-right">
-                    <p className="text-sm text-white/70">
-                      {language === "es" ? "Puntos totales" : "Total points"}
-                    </p>
-                    <p className="text-2xl font-bold">{totalPoints}</p>
-                  </div>
-                </div>
-
-                {items.length === 0 ? (
-                  <p className="text-sm text-white/70">
-                    {language === "es"
-                      ? "Todavía no hay predicciones para esta entrada."
-                      : "There are no predictions for this entry yet."}
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {items.map((item, index) => {
-                      let resultColor = "";
-
-                      if (item.points === 5 || item.points === 10) {
-                        resultColor = "bg-green-500/20 border-green-400";
-                      } else if (item.points > 0) {
-                        resultColor = "bg-yellow-400/20 border-yellow-300";
-                      } else if (item.isFinished) {
-                        resultColor = "bg-red-400/20 border-red-300";
-                      } else {
-                        resultColor = "bg-white/5 border-white/10";
-                      }
-
-                      return (
-                        <div
-                          key={`${item.matchId}-${index}`}
-                          className={`rounded-xl p-4 border ${resultColor}`}
-                        >
-                          <p className="text-xs opacity-70 mb-1">
-                            {translateRoundName(item.roundName, language)}
-                          </p>
-
-                          <p className="font-semibold">
-                            {translateTeamName(item.teamA, language)} vs{" "}
-                            {translateTeamName(item.teamB, language)}
-                          </p>
-
-                          <p className="text-sm opacity-80 mt-2">
-                            {language === "es"
-                              ? "Tu predicción:"
-                              : "Your prediction:"}{" "}
-                            {item.predA} - {item.predB}
-                            {item.joker
-                              ? language === "es"
-                                ? " • Comodín"
-                                : " • Joker"
-                              : ""}
-                          </p>
-
-                          <p className="text-sm opacity-80">
-                            {item.isFinished
-                              ? language === "es"
-                                ? "Resultado final:"
-                                : "Final result:"
-                              : language === "es"
-                              ? "Estado:"
-                              : "Status:"}{" "}
-                            {item.isFinished
-                              ? `${item.actualA} - ${item.actualB}`
-                              : language === "es"
-                              ? "Pendiente"
-                              : "Pending"}
-                          </p>
-
-                          <p className="text-sm font-semibold mt-2">
-                            {language === "es" ? "Puntos:" : "Points:"}{" "}
-                            {item.points}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+              <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75">
+                {entries.length}/5 {t.entries.used}
               </div>
-            );
-          })}
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={entryName}
+                onChange={(e) => setEntryName(e.target.value)}
+                placeholder={t.entries.placeholder}
+                className="flex-1 rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              />
+
+              <button
+                onClick={handleCreateEntry}
+                className="rounded-2xl bg-white px-5 py-3 font-bold text-green-950 transition hover:bg-yellow-200"
+              >
+                {t.entries.create}
+              </button>
+            </div>
+
+            {message && (
+              <div
+                className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+                  message.toLowerCase().includes("error")
+                    ? "border-red-300/20 bg-red-400/10 text-red-200"
+                    : "border-green-300/20 bg-green-400/10 text-green-200"
+                }`}
+              >
+                {message}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-5">
+            {entries.map((entry) => {
+              const breakdown = entryBreakdowns[entry.id];
+              const totalPoints = breakdown?.totalPoints || 0;
+              const items = breakdown?.items || [];
+              const placement = placementByEntry[entry.id];
+
+              return (
+                <div
+                  key={entry.id}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6"
+                >
+                  <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-2xl font-extrabold">
+                          {entry.entry_name}
+                        </p>
+
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
+                            entry.paid
+                              ? "border-green-300/20 bg-green-400/10 text-green-200"
+                              : "border-yellow-300/20 bg-yellow-300/10 text-yellow-200"
+                          }`}
+                        >
+                          {entry.paid ? t.common.paid : t.common.unpaid}
+                        </span>
+                      </div>
+
+                      <p className="mt-2 text-sm text-white/70">
+                        {entry.paid
+                          ? placement
+                            ? getPlaceLabel(placement, language)
+                            : language === "es"
+                            ? "Sin posición todavía"
+                            : "No placement yet"
+                          : language === "es"
+                          ? "No aparece en la tabla hasta estar pagada"
+                          : "Does not appear on leaderboard until paid"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 px-5 py-4 text-left sm:min-w-[150px] sm:text-right">
+                      <p className="text-sm text-white/65">
+                        {language === "es" ? "Puntos totales" : "Total points"}
+                      </p>
+                      <p className="mt-1 text-3xl font-black">{totalPoints}</p>
+                    </div>
+                  </div>
+
+                  {items.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <p className="text-sm text-white/70">
+                        {language === "es"
+                          ? "Todavía no hay predicciones para esta entrada."
+                          : "There are no predictions for this entry yet."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {items.map((item, index) => {
+                        let resultColor = "";
+                        let statusLabel = "";
+
+                        if (item.points === 5 || item.points === 10) {
+                          resultColor = "bg-green-500/20 border-green-400/40";
+                          statusLabel =
+                            language === "es"
+                              ? "Marcador exacto"
+                              : "Exact score";
+                        } else if (item.points > 0) {
+                          resultColor = "bg-yellow-400/20 border-yellow-300/40";
+                          statusLabel =
+                            language === "es"
+                              ? "Resultado correcto"
+                              : "Correct result";
+                        } else if (item.isFinished) {
+                          resultColor = "bg-red-400/20 border-red-300/40";
+                          statusLabel =
+                            language === "es" ? "Sin puntos" : "No points";
+                        } else {
+                          resultColor = "bg-white/5 border-white/10";
+                          statusLabel =
+                            language === "es" ? "Pendiente" : "Pending";
+                        }
+
+                        return (
+                          <div
+                            key={`${item.matchId}-${index}`}
+                            className={`rounded-2xl border p-4 sm:p-5 ${resultColor}`}
+                          >
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-70">
+                                {translateRoundName(item.roundName, language)}
+                              </p>
+
+                              <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
+                                {statusLabel}
+                              </span>
+                            </div>
+
+                            <p className="text-lg font-bold sm:text-xl">
+                              {translateTeamName(item.teamA, language)}{" "}
+                              <span className="mx-2 opacity-60">vs</span>
+                              {translateTeamName(item.teamB, language)}
+                            </p>
+
+                            <div className="mt-3 space-y-1 text-sm opacity-85">
+                              <p>
+                                {language === "es"
+                                  ? "Tu predicción:"
+                                  : "Your prediction:"}{" "}
+                                <span className="font-semibold">
+                                  {item.predA} - {item.predB}
+                                </span>
+                                {item.joker
+                                  ? language === "es"
+                                    ? " • Comodín"
+                                    : " • Joker"
+                                  : ""}
+                              </p>
+
+                              <p>
+                                {item.isFinished
+                                  ? language === "es"
+                                    ? "Resultado final:"
+                                    : "Final result:"
+                                  : language === "es"
+                                  ? "Estado:"
+                                  : "Status:"}{" "}
+                                <span className="font-semibold">
+                                  {item.isFinished
+                                    ? `${item.actualA} - ${item.actualB}`
+                                    : language === "es"
+                                    ? "Pendiente"
+                                    : "Pending"}
+                                </span>
+                              </p>
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between">
+                              <p className="text-sm font-semibold opacity-85">
+                                {language === "es" ? "Puntos" : "Points"}
+                              </p>
+
+                              <div className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-sm font-extrabold">
+                                {item.points}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

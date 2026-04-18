@@ -141,140 +141,202 @@ export default function AdminPage() {
 
   if (!authorized) {
     return (
-      <main className="min-h-screen bg-green-950 text-white">
+      <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
         <Navbar />
 
-        <div className="max-w-md mx-auto p-10">
-          <h1 className="text-4xl font-bold mb-8">Admin Login</h1>
+        <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-14">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_28%)]" />
+          <div className="pointer-events-none absolute -top-16 right-0 h-52 w-52 rounded-full bg-yellow-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-green-400/10 blur-3xl" />
 
-          <div className="p-6 rounded-2xl border border-white/20 bg-white/5 space-y-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter admin password"
-              className="w-full p-3 rounded bg-white/10 border border-white/20"
-            />
+          <div className="relative mx-auto max-w-md">
+            <div className="mb-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 text-center shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
+              <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
+                Admin access
+              </div>
 
-            <button
-              onClick={handleLogin}
-              className="w-full px-5 py-3 rounded bg-white text-green-950 font-semibold"
-            >
-              Enter
-            </button>
+              <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
+                Admin Login
+              </h1>
 
-            {message && <p className="text-sm">{message}</p>}
+              <p className="mx-auto mt-3 max-w-sm text-sm text-white/75 sm:text-base">
+                Secure access for match management, result entry, and payment
+                status updates.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-6 shadow-2xl shadow-black/20 backdrop-blur-sm space-y-5 sm:p-7">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter admin password"
+                className="w-full rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              />
+
+              <button
+                onClick={handleLogin}
+                className="w-full rounded-2xl bg-white px-5 py-3 font-bold text-green-950 transition hover:bg-yellow-200"
+              >
+                Enter
+              </button>
+
+              {message && (
+                <div className="rounded-2xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                  {message}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-green-950 text-white">
+    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto p-10 space-y-10">
-        <h1 className="text-4xl font-bold">Admin Panel</h1>
+      <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-12">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_28%)]" />
+        <div className="pointer-events-none absolute -top-16 right-0 h-52 w-52 rounded-full bg-yellow-300/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-green-400/10 blur-3xl" />
 
-        {message && (
-          <p className="text-sm bg-white/10 border border-white/20 rounded p-3">
-            {message}
-          </p>
-        )}
-
-        <section className="p-6 rounded-2xl border border-white/20 bg-white/5">
-          <h2 className="text-2xl font-semibold mb-4">Create Match</h2>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              value={roundName}
-              onChange={(e) => setRoundName(e.target.value)}
-              placeholder="Round name"
-              className="p-3 rounded bg-white/10 border border-white/20"
-            />
-
-            <input
-              type="datetime-local"
-              value={kickoff}
-              onChange={(e) => setKickoff(e.target.value)}
-              className="p-3 rounded bg-white/10 border border-white/20"
-            />
-
-            <input
-              type="text"
-              value={teamA}
-              onChange={(e) => setTeamA(e.target.value)}
-              placeholder="Team A"
-              className="p-3 rounded bg-white/10 border border-white/20"
-            />
-
-            <input
-              type="text"
-              value={teamB}
-              onChange={(e) => setTeamB(e.target.value)}
-              placeholder="Team B"
-              className="p-3 rounded bg-white/10 border border-white/20"
-            />
-          </div>
-
-          <button
-            onClick={handleCreateMatch}
-            className="mt-4 px-5 py-3 rounded bg-white text-green-950 font-semibold"
-          >
-            Create Match
-          </button>
-        </section>
-
-        <section className="p-6 rounded-2xl border border-white/20 bg-white/5">
-          <h2 className="text-2xl font-semibold mb-4">Manage Matches</h2>
-
-          <div className="space-y-4">
-            {matches.map((match) => (
-              <MatchRow
-                key={match.id}
-                match={match}
-                onSave={handleUpdateMatch}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="p-6 rounded-2xl border border-white/20 bg-white/5">
-          <h2 className="text-2xl font-semibold mb-4">Manage Entries</h2>
-
-          <div className="space-y-4">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="p-4 rounded-xl border border-white/20 bg-white/5 flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-lg font-semibold">{entry.entry_name}</p>
-                  <p className="text-sm text-white/70">
-                    Email: {getUserEmail(entry.user_id)}
-                  </p>
-                  <p className="text-sm text-white/70">
-                    Status: {entry.paid ? "Paid" : "Not paid"}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => handleTogglePaid(entry.id, entry.paid)}
-                  className={`px-4 py-2 rounded font-semibold ${
-                    entry.paid
-                      ? "bg-red-400 text-green-950"
-                      : "bg-white text-green-950"
-                  }`}
-                >
-                  {entry.paid ? "Mark Unpaid" : "Mark Paid"}
-                </button>
+        <div className="relative mx-auto max-w-6xl space-y-8">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
+            <div className="text-center">
+              <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
+                Control center
               </div>
-            ))}
+
+              <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
+                Admin Panel
+              </h1>
+
+              <p className="mx-auto mt-3 max-w-2xl text-sm text-white/75 sm:text-base">
+                Manage matches, enter results, and control paid entry status
+                from one place.
+              </p>
+            </div>
           </div>
-        </section>
-      </div>
+
+          {message && (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                message.toLowerCase().includes("error")
+                  ? "border-red-300/20 bg-red-400/10 text-red-200"
+                  : "border-green-300/20 bg-green-400/10 text-green-200"
+              }`}
+            >
+              {message}
+            </div>
+          )}
+
+          <section className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-xl shadow-black/15 backdrop-blur-sm">
+            <h2 className="mb-5 text-2xl font-bold">Create Match</h2>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                value={roundName}
+                onChange={(e) => setRoundName(e.target.value)}
+                placeholder="Round name"
+                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              />
+
+              <input
+                type="datetime-local"
+                value={kickoff}
+                onChange={(e) => setKickoff(e.target.value)}
+                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition focus:border-yellow-300/40 focus:bg-white/15"
+              />
+
+              <input
+                type="text"
+                value={teamA}
+                onChange={(e) => setTeamA(e.target.value)}
+                placeholder="Team A"
+                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              />
+
+              <input
+                type="text"
+                value={teamB}
+                onChange={(e) => setTeamB(e.target.value)}
+                placeholder="Team B"
+                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              />
+            </div>
+
+            <button
+              onClick={handleCreateMatch}
+              className="mt-5 rounded-2xl bg-white px-5 py-3 font-bold text-green-950 transition hover:bg-yellow-200"
+            >
+              Create Match
+            </button>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-xl shadow-black/15 backdrop-blur-sm">
+            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-2xl font-bold">Manage Matches</h2>
+
+              <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75">
+                {matches.length} {matches.length === 1 ? "match" : "matches"}
+              </div>
+            </div>
+
+            {matches.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/70">
+                No matches found.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {matches.map((match) => (
+                  <MatchRow
+                    key={match.id}
+                    match={match}
+                    onSave={handleUpdateMatch}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-xl shadow-black/15 backdrop-blur-sm">
+            <h2 className="mb-5 text-2xl font-bold">Manage Entries</h2>
+
+            <div className="space-y-4">
+              {entries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-lg font-bold">{entry.entry_name}</p>
+                    <p className="mt-1 text-sm text-white/70">
+                      Email: {getUserEmail(entry.user_id)}
+                    </p>
+                    <p className="mt-1 text-sm text-white/70">
+                      Status: {entry.paid ? "Paid" : "Not paid"}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleTogglePaid(entry.id, entry.paid)}
+                    className={`rounded-2xl px-4 py-2 font-bold transition ${
+                      entry.paid
+                        ? "bg-red-400 text-green-950 hover:bg-red-300"
+                        : "bg-white text-green-950 hover:bg-yellow-200"
+                    }`}
+                  >
+                    {entry.paid ? "Mark Unpaid" : "Mark Paid"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
     </main>
   );
 }
@@ -307,23 +369,40 @@ function MatchRow({
   }
 
   return (
-    <div className="p-4 rounded-xl border border-white/20 bg-white/5">
-      <p className="text-sm text-white/70 mb-1">{match.round_name}</p>
-      <p className="text-lg font-semibold mb-2">
-        {match.team_a} vs {match.team_b}
+    <div className="rounded-2xl border border-white/15 bg-white/[0.07] p-4 sm:p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/65">
+          {match.round_name}
+        </p>
+
+        <span
+          className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] ${
+            match.is_finished
+              ? "border-green-300/20 bg-green-400/10 text-green-200"
+              : "border-yellow-300/20 bg-yellow-300/10 text-yellow-200"
+          }`}
+        >
+          {match.is_finished ? "Finished" : "Pending"}
+        </span>
+      </div>
+
+      <p className="text-xl font-bold text-white">
+        {match.team_a} <span className="mx-2 text-white/50">vs</span>{" "}
+        {match.team_b}
       </p>
-      <p className="text-sm text-white/70 mb-4">
+
+      <p className="mt-2 text-sm text-white/65">
         Kickoff: {new Date(match.kickoff).toLocaleString()}
       </p>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <input
           type="number"
           min={0}
           value={scoreA}
           onChange={(e) => setScoreA(e.target.value)}
           placeholder="Score A"
-          className="w-24 p-2 rounded bg-white/10 border border-white/20"
+          className="w-24 rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
         />
 
         <input
@@ -332,10 +411,10 @@ function MatchRow({
           value={scoreB}
           onChange={(e) => setScoreB(e.target.value)}
           placeholder="Score B"
-          className="w-24 p-2 rounded bg-white/10 border border-white/20"
+          className="w-24 rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
         />
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
           <input
             type="checkbox"
             checked={isFinished}
@@ -346,7 +425,7 @@ function MatchRow({
 
         <button
           onClick={handleSave}
-          className="px-4 py-2 rounded bg-white text-green-950 font-semibold"
+          className="rounded-2xl bg-white px-4 py-3 font-bold text-green-950 transition hover:bg-yellow-200"
         >
           Save Match
         </button>
