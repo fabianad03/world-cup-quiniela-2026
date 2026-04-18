@@ -279,6 +279,90 @@ export default function EntriesPage() {
             </div>
           </div>
 
+          <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-7">
+            <div className="mb-6 text-center">
+              <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
+                {language === "es" ? "Qué hacer aquí" : "What to do here"}
+              </div>
+
+              <h2 className="text-2xl font-black sm:text-3xl">
+                {language === "es"
+                  ? "Cómo funciona esta parte"
+                  : "How this part works"}
+              </h2>
+
+              <p className="mx-auto mt-2 max-w-2xl text-sm text-white/70 sm:text-base">
+                {language === "es"
+                  ? "Primero crea tus entradas aquí. Después de realizar el pago, serán marcadas como pagadas y podrás usar esas entradas para hacer predicciones."
+                  : "First create your entries here. After payment, they will be marked as paid and you’ll be able to use them to make predictions."}
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  1
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Crea entradas" : "Create entries"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Haz hasta 5 entradas con el nombre que quieras."
+                    : "Create up to 5 entries with the names you want."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  2
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Realiza el pago" : "Make payment"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Cada entrada debe pagarse para poder activarse."
+                    : "Each entry must be paid before it becomes active."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  3
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Espera aprobación" : "Wait for approval"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Cuando se marque como pagada, quedará lista para jugar."
+                    : "Once it is marked as paid, it will be ready to play."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  4
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Ve a predecir" : "Go predict"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Luego usa esa entrada en la página de predicciones."
+                    : "Then use that entry on the predictions page."}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
+              {language === "es"
+                ? "Importante: las entradas no pagadas no pueden hacer predicciones ni aparecer en la tabla."
+                : "Important: unpaid entries cannot make predictions or appear on the leaderboard."}
+            </div>
+          </div>
+
           <div className="mb-10 rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold">

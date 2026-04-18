@@ -153,6 +153,104 @@ export default function HomePageClient({
             </div>
           </div>
 
+          <div className="mx-auto mt-10 max-w-5xl rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-7">
+            <div className="mb-6 text-center">
+              <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
+                {language === "es" ? "Cómo empezar" : "How to get started"}
+              </div>
+
+              <h2 className="text-2xl font-black sm:text-3xl">
+                {language === "es"
+                  ? "Sigue estos pasos"
+                  : "Follow these steps"}
+              </h2>
+
+              <p className="mx-auto mt-2 max-w-2xl text-sm text-white/70 sm:text-base">
+                {language === "es"
+                  ? "Así funciona el proceso desde crear tu cuenta hasta empezar a predecir."
+                  : "Here’s the flow from creating your account to starting your predictions."}
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  1
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Crea tu cuenta" : "Sign up"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Regístrate o inicia sesión para entrar a la competencia."
+                    : "Create your account or log in to join the competition."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  2
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Crea tus entradas" : "Create entries"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Haz hasta 5 entradas con el nombre que quieras."
+                    : "Create up to 5 entries with the names you want."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  3
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Realiza el pago" : "Pay for them"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Cada entrada debe pagarse para poder participar."
+                    : "Each entry must be paid before it can participate."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  4
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Espera confirmación" : "Wait for approval"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Cuando la entrada sea marcada como pagada, quedará habilitada."
+                    : "Once your entry is marked paid, it will be unlocked."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                  5
+                </div>
+                <h3 className="text-base font-bold">
+                  {language === "es" ? "Empieza a predecir" : "Start predicting"}
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {language === "es"
+                    ? "Guarda tus marcadores antes del inicio de cada partido."
+                    : "Save your score predictions before each match kicks off."}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-3 text-sm text-green-100">
+              {language === "es"
+                ? "Importante: una entrada no puede hacer predicciones ni aparecer en la tabla hasta estar marcada como pagada."
+                : "Important: an entry cannot make predictions or appear on the leaderboard until it is marked as paid."}
+            </div>
+          </div>
+
           <div className="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-3">
             <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-left shadow-xl shadow-black/15 backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/[0.07]">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-300/15 text-2xl">

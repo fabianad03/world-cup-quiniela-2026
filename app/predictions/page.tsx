@@ -486,17 +486,27 @@ export default function Predictions() {
             </div>
 
             {!authLoading && !selectedEntryId && userId && (
-              <p className="mt-3 text-sm text-yellow-300">
+              <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
                 {language === "es"
-                  ? "Selecciona una entrada para hacer predicciones."
-                  : "Select an entry to make predictions."}
-              </p>
+                  ? "Paso 1: selecciona una entrada. Después podrás guardar tus predicciones con esa entrada."
+                  : "Step 1: select an entry. Then you’ll be able to save predictions using that entry."}
+              </div>
             )}
 
-            {!authLoading && !selectedEntry?.paid && selectedEntryId && (
-              <p className="mt-3 text-sm text-yellow-300">
-                {t.predictions.unpaidBlocked}
-              </p>
+            {!authLoading && selectedEntryId && selectedEntry && !selectedEntry.paid && (
+              <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
+                {language === "es"
+                  ? "Esta entrada todavía no está pagada. Una vez que sea marcada como pagada, podrás usarla para hacer predicciones."
+                  : "This entry is not paid yet. Once it is marked as paid, you’ll be able to use it to make predictions."}
+              </div>
+            )}
+
+            {!authLoading && selectedEntryId && selectedEntry?.paid && (
+              <div className="mt-4 rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-3 text-sm text-green-100">
+                {language === "es"
+                  ? "Tu entrada está lista. Ahora puedes guardar tus predicciones antes del inicio de cada partido."
+                  : "Your entry is ready. You can now save predictions before each match kicks off."}
+              </div>
             )}
           </div>
 
@@ -544,8 +554,52 @@ export default function Predictions() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                    <div className="text-center sm:text-left">
+                  <div className="mb-2 text-sm font-semibold text-white/70">
+                    {language === "es" ? "Tu predicción" : "Your prediction"}
+                  </div>
+
+                  {/* MOBILE LAYOUT */}
+                  <div className="space-y-3 sm:hidden">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-lg font-bold">
+                        {translateTeamName(match.team_a, language)}
+                      </span>
+
+                      <input
+                        type="number"
+                        min={0}
+                        disabled={isDisabled}
+                        value={scores[match.id]?.a || ""}
+                        className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80"
+                        placeholder="0"
+                        onChange={(e) =>
+                          handleChange(match.id, "a", e.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-lg font-bold">
+                        {translateTeamName(match.team_b, language)}
+                      </span>
+
+                      <input
+                        type="number"
+                        min={0}
+                        disabled={isDisabled}
+                        value={scores[match.id]?.b || ""}
+                        className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80"
+                        placeholder="0"
+                        onChange={(e) =>
+                          handleChange(match.id, "b", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* DESKTOP LAYOUT */}
+                  <div className="hidden gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                    <div className="text-left">
                       <p className="text-lg font-bold sm:text-2xl">
                         {translateTeamName(match.team_a, language)}
                       </p>
@@ -579,7 +633,7 @@ export default function Predictions() {
                       />
                     </div>
 
-                    <div className="text-center sm:text-right">
+                    <div className="text-right">
                       <p className="text-lg font-bold sm:text-2xl">
                         {translateTeamName(match.team_b, language)}
                       </p>

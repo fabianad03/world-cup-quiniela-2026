@@ -80,6 +80,12 @@ export default function LoginPage() {
             onSubmit={handleLogin}
             className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-6 shadow-2xl shadow-black/20 backdrop-blur-sm space-y-5 sm:p-7"
           >
+            <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
+              {language === "es"
+                ? "Usa el mismo correo electrónico con el que creaste tu cuenta."
+                : "Use the same email address you signed up with."}
+            </div>
+
             <div>
               <label className="mb-2 block text-sm font-semibold text-white/85">
                 {language === "es" ? "Correo electrónico" : "Email"}
