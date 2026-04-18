@@ -3,7 +3,6 @@ export const revalidate = 0;
 
 import { supabase } from "@/lib/supabase";
 import LeaderboardClient from "@/components/LeaderboardClient";
-import PrizePoolCard from "@/components/PrizePoolCard";
 
 function calculatePoints(pred: any, match: any) {
   if (!match.is_finished) return 0;
@@ -71,14 +70,10 @@ export default async function Leaderboard() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
-      <PrizePoolCard />
-
-      <LeaderboardClient
-        leaderboard={leaderboard}
-        matches={matches || []}
-        predictions={predictions || []}
-      />
-    </div>
+    <LeaderboardClient
+      leaderboard={leaderboard}
+      matches={matches || []}
+      predictions={predictions || []}
+    />
   );
 }

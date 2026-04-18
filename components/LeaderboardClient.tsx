@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { useLanguage } from "@/components/LanguageProvider";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
+import PrizePoolCard from "@/components/PrizePoolCard";
 
 function getPlaceLabel(index: number, language: "en" | "es") {
   if (language === "es") {
@@ -108,6 +109,10 @@ export default function LeaderboardClient({
 
       <div className="p-10 max-w-3xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">{t.leaderboard.title}</h1>
+
+      <div className="mt-8 mb-8">
+        <PrizePoolCard />
+      </div>
 
         {leaderboard.length === 0 ? (
           <p className="text-white/70">{t.leaderboard.empty}</p>

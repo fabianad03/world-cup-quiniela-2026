@@ -25,7 +25,6 @@ function formatMoney(amount: number) {
 
 function getPlaceLabel(place: number, language: string) {
   if (language === "es") return `${place}° lugar`;
-
   if (place === 1) return "1st place";
   if (place === 2) return "2nd place";
   if (place === 3) return "3rd place";
@@ -40,51 +39,16 @@ export default function PrizePoolCard() {
   const prizePool = totalCollected - organizerFee;
 
   return (
-    <section className="border border-white/20 rounded-2xl p-5 sm:p-6 bg-white/5">
-      <h2 className="text-2xl font-bold mb-3">
-        {language === "es" ? "Premios actuales" : "Current Prize Pool"}
+    <section className="rounded-2xl border border-white/20 bg-white/5 p-5 sm:p-6">
+      <h2 className="text-2xl font-bold mb-4">
+        {language === "es" ? "Premios actuales" : "Current Prizes"}
       </h2>
 
-      <p className="text-white/80 text-sm sm:text-base mb-4">
+      <p className="text-white/80 text-sm sm:text-base mb-5">
         {language === "es"
-          ? `Basado en ${PAID_ENTRIES} entradas pagadas de ${formatMoney(
-              ENTRY_PRICE
-            )} cada una.`
-          : `Based on ${PAID_ENTRIES} paid entries at ${formatMoney(
-              ENTRY_PRICE
-            )} each.`}
+          ? "Los premios se actualizan según la cantidad de entradas pagadas."
+          : "Prizes are updated based on the number of paid entries."}
       </p>
-
-      <div className="space-y-3 mb-6">
-        <div className="flex items-center justify-between rounded-xl border border-white/15 bg-white/5 px-4 py-3">
-          <span className="font-medium">
-            {language === "es" ? "Total recaudado" : "Total collected"}
-          </span>
-          <span className="font-semibold text-green-300">
-            {formatMoney(totalCollected)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl border border-white/15 bg-white/5 px-4 py-3">
-          <span className="font-medium">
-            {language === "es"
-              ? "Organización y administración (20%)"
-              : "Organizer / management fee (20%)"}
-          </span>
-          <span className="font-semibold text-yellow-300">
-            {formatMoney(organizerFee)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl border border-white/15 bg-white/5 px-4 py-3">
-          <span className="font-medium">
-            {language === "es" ? "Pozo de premios" : "Prize pool"}
-          </span>
-          <span className="font-semibold text-green-300">
-            {formatMoney(prizePool)}
-          </span>
-        </div>
-      </div>
 
       <div className="space-y-3">
         {PRIZES.map((item) => {
@@ -98,6 +62,7 @@ export default function PrizePoolCard() {
               <span className="font-medium">
                 {getPlaceLabel(item.place, language)}
               </span>
+
               <span className="font-semibold text-green-300">
                 {formatMoney(amount)}
               </span>
@@ -105,12 +70,6 @@ export default function PrizePoolCard() {
           );
         })}
       </div>
-
-      <p className="text-xs text-white/60 mt-4">
-        {language === "es"
-          ? "Los montos se actualizan manualmente según la cantidad de entradas pagadas."
-          : "Amounts are updated manually based on the number of paid entries."}
-      </p>
     </section>
   );
 }

@@ -7,6 +7,7 @@ import PageTitle from "@/components/PageTitle";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
+import PrizePoolCard from "@/components/PrizePoolCard";
 
 export default function HomePageClient({
   matches,
@@ -126,6 +127,10 @@ export default function HomePageClient({
                 : "Predictions lock automatically once a match starts, so make sure you submit your picks on time."}
             </p>
           </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto mt-8 mb-14">
+          <PrizePoolCard />
         </div>
 
         <div className="max-w-3xl mx-auto">
