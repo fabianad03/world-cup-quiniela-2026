@@ -1,8 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import HomePageClient from "@/components/HomePageClient";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import PrizePoolCard from "@/components/PrizePoolCard";
 
 export default async function Home() {
   const { data: matches } = await supabase
@@ -10,5 +8,13 @@ export default async function Home() {
     .select("*")
     .order("kickoff", { ascending: true });
 
-  return <HomePageClient matches={matches || []} />;
+  return (
+    <>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
+        <PrizePoolCard />
+      </div>
+
+      <HomePageClient matches={matches || []} />
+    </>
+  );
 }

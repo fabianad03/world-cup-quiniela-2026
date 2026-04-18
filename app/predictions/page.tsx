@@ -13,6 +13,8 @@ type MatchStatus =
   | { type: "saved" }
   | { type: "error"; message: string };
 
+const JOKER_ALLOWED_ROUNDS = ["Group Stage", "Round of 32", "Round of 16"];
+
 export default function Predictions() {
   const { t, language, mounted } = useLanguage();
 
@@ -31,6 +33,7 @@ export default function Predictions() {
       .from("matches")
       .select("*")
       .order("kickoff", { ascending: true });
+
     setMatches(matchesData || []);
   }
 
@@ -260,6 +263,24 @@ export default function Predictions() {
       return;
     }
 
+    const isJokerAllowedForRound = JOKER_ALLOWED_ROUNDS.includes(
+      match.round_name
+    );
+
+    if (score?.joker && !isJokerAllowedForRound) {
+      setSaveStatus((prev) => ({
+        ...prev,
+        [match.id]: {
+          type: "error",
+          message:
+            language === "es"
+              ? "El comodín solo está disponible hasta octavos de final."
+              : "The Joker is only available through the Round of 16.",
+        },
+      }));
+      return;
+    }
+
     const { data: existing } = await supabase
       .from("predictions")
       .select("*")
@@ -268,7 +289,7 @@ export default function Predictions() {
       .maybeSingle();
 
     if (score.joker) {
-      const { data: allPredictions, error: jokerCheckError } = await supabase
+      const { data: jokerPredictions, error: jokerCheckError } = await supabase
         .from("predictions")
         .select("id, match_id, joker")
         .eq("entry_id", selectedEntryId)
@@ -285,23 +306,49 @@ export default function Predictions() {
         return;
       }
 
-      const otherJokerExists = allPredictions?.some(
-        (prediction: any) =>
-          prediction.id !== existing?.id && prediction.match_id !== match.id
-      );
+      const otherJokerPredictions =
+        jokerPredictions?.filter(
+          (prediction: any) => prediction.id !== existing?.id
+        ) || [];
 
-      if (otherJokerExists) {
-        setSaveStatus((prev) => ({
-          ...prev,
-          [match.id]: {
-            type: "error",
-            message:
-              language === "es"
-                ? "Por ahora solo puedes usar un comodín por entrada."
-                : "You can only use one Joker per entry for now.",
-          },
-        }));
-        return;
+      if (otherJokerPredictions.length > 0) {
+        const otherMatchIds = otherJokerPredictions.map(
+          (prediction: any) => prediction.match_id
+        );
+
+        const { data: jokerMatches, error: jokerMatchesError } = await supabase
+          .from("matches")
+          .select("id, round_name")
+          .in("id", otherMatchIds);
+
+        if (jokerMatchesError) {
+          setSaveStatus((prev) => ({
+            ...prev,
+            [match.id]: {
+              type: "error",
+              message: `Error: ${jokerMatchesError.message}`,
+            },
+          }));
+          return;
+        }
+
+        const sameRoundJokerExists = jokerMatches?.some(
+          (jokerMatch: any) => jokerMatch.round_name === match.round_name
+        );
+
+        if (sameRoundJokerExists) {
+          setSaveStatus((prev) => ({
+            ...prev,
+            [match.id]: {
+              type: "error",
+              message:
+                language === "es"
+                  ? "Solo puedes usar un comodín por ronda en cada entrada."
+                  : "You can only use one Joker per round per entry.",
+            },
+          }));
+          return;
+        }
       }
     }
 
@@ -404,6 +451,9 @@ export default function Predictions() {
             const isLocked = new Date() > new Date(match.kickoff);
             const hasSavedPrediction = saveStatus[match.id]?.type === "saved";
             const isEditing = editing[match.id] ?? !hasSavedPrediction;
+            const isJokerAllowedForRound = JOKER_ALLOWED_ROUNDS.includes(
+              match.round_name
+            );
 
             const isDisabled =
               authLoading ||
@@ -497,7 +547,7 @@ export default function Predictions() {
                 <div className="mt-4 flex items-center gap-2">
                   <input
                     type="checkbox"
-                    disabled={isDisabled}
+                    disabled={isDisabled || !isJokerAllowedForRound}
                     checked={scores[match.id]?.joker || false}
                     onChange={(e) =>
                       handleJokerChange(match.id, e.target.checked)
@@ -509,6 +559,14 @@ export default function Predictions() {
                       : "Joker (double points)"}
                   </label>
                 </div>
+
+                {!isJokerAllowedForRound && (
+                  <p className="text-yellow-300 text-sm mt-2">
+                    {language === "es"
+                      ? "El comodín solo está disponible hasta octavos de final."
+                      : "The Joker is only available through the Round of 16."}
+                  </p>
+                )}
 
                 <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                   {hasSavedPrediction && !isEditing ? (
@@ -541,15 +599,15 @@ export default function Predictions() {
                         status.type === "saving"
                           ? "bg-yellow-300 text-green-950"
                           : status.type === "saved"
-                          ? "bg-green-400 text-green-950"
-                          : "bg-white text-green-950"
+                            ? "bg-green-400 text-green-950"
+                            : "bg-white text-green-950"
                       } disabled:bg-gray-500 disabled:cursor-not-allowed`}
                     >
                       {status.type === "saving"
                         ? t.common.saving
                         : status.type === "saved"
-                        ? t.common.saved
-                        : t.common.save}
+                          ? t.common.saved
+                          : t.common.save}
                     </button>
                   )}
 

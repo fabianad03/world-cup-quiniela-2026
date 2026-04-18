@@ -3,6 +3,7 @@ export const revalidate = 0;
 
 import { supabase } from "@/lib/supabase";
 import LeaderboardClient from "@/components/LeaderboardClient";
+import PrizePoolCard from "@/components/PrizePoolCard";
 
 function calculatePoints(pred: any, match: any) {
   if (!match.is_finished) return 0;
@@ -34,7 +35,11 @@ function calculatePoints(pred: any, match: any) {
 }
 
 export default async function Leaderboard() {
-  const { data: matches } = await supabase.from("matches").select("*");
+  const { data: matches } = await supabase
+    .from("matches")
+    .select("*")
+    .order("kickoff", { ascending: true });
+
   const { data: predictions } = await supabase.from("predictions").select("*");
   const { data: entries } = await supabase.from("entries").select("*");
 
@@ -66,10 +71,14 @@ export default async function Leaderboard() {
   );
 
   return (
-    <LeaderboardClient
-      leaderboard={leaderboard}
-      matches={matches || []}
-      predictions={predictions || []}
-    />
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
+      <PrizePoolCard />
+
+      <LeaderboardClient
+        leaderboard={leaderboard}
+        matches={matches || []}
+        predictions={predictions || []}
+      />
+    </div>
   );
 }
