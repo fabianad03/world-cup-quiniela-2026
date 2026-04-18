@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { supabase } from "@/lib/supabase";
 
-const PAID_ENTRIES = 20; // <-- update this manually
 const ENTRY_PRICE = 30;
 const ORGANIZER_PERCENT = 0.2;
 
@@ -32,9 +33,33 @@ function getPlaceLabel(place: number, language: string) {
 }
 
 export default function PrizePoolCard() {
-  const { language } = useLanguage();
+  const { language, mounted } = useLanguage();
+  const [paidEntries, setPaidEntries] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
-  const totalCollected = PAID_ENTRIES * ENTRY_PRICE;
+  useEffect(() => {
+    async function loadPaidEntriesCount() {
+      const { count, error } = await supabase
+        .from("entries")
+        .select("*", { count: "exact", head: true })
+        .eq("paid", true);
+
+      if (error) {
+        console.error("Error loading paid entries count:", error);
+        setPaidEntries(0);
+      } else {
+        setPaidEntries(count || 0);
+      }
+
+      setLoading(false);
+    }
+
+    loadPaidEntriesCount();
+  }, []);
+
+  if (!mounted) return null;
+
+  const totalCollected = paidEntries * ENTRY_PRICE;
   const organizerFee = totalCollected * ORGANIZER_PERCENT;
   const prizePool = totalCollected - organizerFee;
 
@@ -45,7 +70,11 @@ export default function PrizePoolCard() {
       </h2>
 
       <p className="text-white/80 text-sm sm:text-base mb-5">
-        {language === "es"
+        {loading
+          ? language === "es"
+            ? "Cargando premios..."
+            : "Loading prizes..."
+          : language === "es"
           ? "Los premios se actualizan según la cantidad de entradas pagadas."
           : "Prizes are updated based on the number of paid entries."}
       </p>
@@ -64,7 +93,7 @@ export default function PrizePoolCard() {
               </span>
 
               <span className="font-semibold text-green-300">
-                {formatMoney(amount)}
+                {loading ? "—" : formatMoney(amount)}
               </span>
             </div>
           );
