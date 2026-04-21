@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "@/components/Navbar";
 import PageTitle from "@/components/PageTitle";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -43,6 +43,8 @@ export default function HomePageClient({
     };
   }, []);
 
+  const previewMatches = useMemo(() => matches.slice(0, 6), [matches]);
+
   if (!mounted) return null;
 
   const userLabel =
@@ -50,7 +52,7 @@ export default function HomePageClient({
     (language === "es" ? "usuario" : "user");
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
+    <main className="pt-28 min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <PageTitle
         en="World Cup Quiniela 2026"
         es="Quiniela del Mundial 2026"
@@ -273,11 +275,12 @@ export default function HomePageClient({
               <h3 className="mb-3 text-xl font-bold">
                 {language === "es" ? "Puntuación" : "Scoring"}
               </h3>
-              <p className="text-sm leading-7 text-white/80 sm:text-base">
-                {language === "es"
-                  ? "Marcador exacto = 5 puntos, ganador correcto = 3 puntos, empate correcto = 2 puntos, y el Comodín duplica tus puntos."
-                  : "Exact score = 5 points, correct winner = 3 points, correct draw = 2 points, and Joker doubles your points."}
-              </p>
+              <div className="space-y-2 text-sm text-white/80 sm:text-base">
+                <p>{language === "es" ? "Marcador exacto — 5 puntos" : "Exact score — 5 points"}</p>
+                <p>{language === "es" ? "Ganador correcto — 3 puntos" : "Correct winner — 3 points"}</p>
+                <p>{language === "es" ? "Empate correcto — 2 puntos" : "Correct draw — 2 points"}</p>
+                <p>{language === "es" ? "Comodín — duplica puntos" : "Joker — doubles points"}</p>
+              </div>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-left shadow-xl shadow-black/15 backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/[0.07]">
@@ -300,18 +303,27 @@ export default function HomePageClient({
           </div>
 
           <div className="mx-auto mt-14 max-w-4xl">
-            <div className="mb-6 text-center">
-              <h3 className="text-2xl font-bold sm:text-3xl">
-                {language === "es" ? "Próximos Partidos" : "Upcoming Matches"}
-              </h3>
-              <p className="mt-2 text-sm text-white/65 sm:text-base">
-                {language === "es"
-                  ? "Prepárate para tus próximas predicciones."
-                  : "Get ready for your next predictions."}
-              </p>
+            <div className="mb-6 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+              <div>
+                <h3 className="text-2xl font-bold sm:text-3xl">
+                  {language === "es" ? "Vista rápida de partidos" : "Match preview"}
+                </h3>
+                <p className="mt-2 text-sm text-white/65 sm:text-base">
+                  {language === "es"
+                    ? "Consulta algunos partidos aquí o entra a la sección completa."
+                    : "See a few matches here or open the full matches section."}
+                </p>
+              </div>
+
+              <Link
+                href="/matches"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:border-yellow-300/40 hover:bg-white/10"
+              >
+                {language === "es" ? "Ver todos los partidos" : "View all matches"}
+              </Link>
             </div>
 
-            {matches.length === 0 && (
+            {previewMatches.length === 0 && (
               <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-center text-white/70 shadow-xl shadow-black/10">
                 <p className="text-sm sm:text-base">
                   {language === "es"
@@ -322,7 +334,7 @@ export default function HomePageClient({
             )}
 
             <div className="space-y-4">
-              {matches.map((match) => (
+              {previewMatches.map((match) => (
                 <div
                   key={match.id}
                   className="group rounded-3xl border border-white/10 bg-white/[0.05] p-5 text-left shadow-xl shadow-black/15 transition hover:-translate-y-1 hover:border-yellow-300/20 hover:bg-white/[0.07]"
@@ -332,31 +344,74 @@ export default function HomePageClient({
                       {translateRoundName(match.round_name, language)}
                     </p>
 
-                    <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-200/80">
-                      {language === "es" ? "Próximo partido" : "Next match"}
-                    </p>
+                    {match.is_finished ? (
+                      <p className="inline-flex rounded-full border border-green-300/20 bg-green-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-green-200">
+                        {language === "es" ? "Finalizado" : "Final"}
+                      </p>
+                    ) : (
+                      <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-200/80">
+                        {language === "es" ? "Próximo partido" : "Next match"}
+                      </p>
+                    )}
                   </div>
 
-                  <p className="text-lg font-bold sm:text-2xl">
-                    {translateTeamName(match.team_a, language)}{" "}
-                    <span className="mx-2 text-white/50">vs</span>{" "}
-                    {translateTeamName(match.team_b, language)}
-                  </p>
+                  {match.is_finished ? (
+                    <div>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                        <p className="text-lg font-bold sm:text-2xl text-left">
+                          {translateTeamName(match.team_a, language)}
+                        </p>
 
-                  <p className="mt-3 text-sm text-white/70">
-                    {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
-                    {new Date(match.kickoff).toLocaleString(
-                      language === "es" ? "es-ES" : "en-US",
-                      {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                        hour12: true,
-                      }
-                    )}
-                  </p>
+                        <div className="rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-2 text-center">
+                          <p className="text-xl font-black sm:text-2xl">
+                            {match.score_a} - {match.score_b}
+                          </p>
+                        </div>
+
+                        <p className="text-lg font-bold sm:text-2xl text-right">
+                          {translateTeamName(match.team_b, language)}
+                        </p>
+                      </div>
+
+                      <p className="mt-3 text-sm text-white/70">
+                        {language === "es" ? "Resultado final" : "Final result"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-lg font-bold sm:text-2xl">
+                        {translateTeamName(match.team_a, language)}{" "}
+                        <span className="mx-2 text-white/50">vs</span>{" "}
+                        {translateTeamName(match.team_b, language)}
+                      </p>
+
+                      <p className="mt-3 text-sm text-white/70">
+                        {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
+                        {new Date(match.kickoff).toLocaleString(
+                          language === "es" ? "es-ES" : "en-US",
+                          {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                            hour12: true,
+                          }
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+
+            {matches.length > 6 && (
+              <div className="mt-6 text-center">
+                <Link
+                  href="/matches"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3 text-sm font-bold text-green-950 transition hover:bg-yellow-200"
+                >
+                  {language === "es" ? "Ir a Partidos" : "Go to Matches"}
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>

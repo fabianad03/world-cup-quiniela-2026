@@ -141,7 +141,7 @@ export default function AdminPage() {
 
   if (!authorized) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
+      <main pt-28 className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
         <Navbar />
 
         <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-14">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -15,12 +15,21 @@ type MatchStatus =
 
 const JOKER_ALLOWED_ROUNDS = ["Group Stage", "Round of 32", "Round of 16"];
 
+function getLocalDateKey(dateString: string) {
+  const d = new Date(dateString);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function Predictions() {
   const { t, language, mounted } = useLanguage();
 
   const [matches, setMatches] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [selectedEntryId, setSelectedEntryId] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
   const [scores, setScores] = useState<any>({});
   const [saveStatus, setSaveStatus] = useState<Record<string, MatchStatus>>({});
   const [editing, setEditing] = useState<Record<string, boolean>>({});
@@ -169,6 +178,37 @@ export default function Predictions() {
   }
 
   const selectedEntry = entries.find((e) => e.id === selectedEntryId);
+
+  const availableDates = useMemo(() => {
+    const uniqueDates = Array.from(
+      new Set(matches.map((match) => getLocalDateKey(match.kickoff)))
+    ).sort((a, b) => a.localeCompare(b));
+
+    return uniqueDates.map((dateKey) => {
+      const [year, month, day] = dateKey.split("-").map(Number);
+      const label = new Date(year, month - 1, day).toLocaleDateString(
+        language === "es" ? "es-ES" : "en-US",
+        {
+          weekday: "short",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }
+      );
+
+      return {
+        value: dateKey,
+        label,
+      };
+    });
+  }, [matches, language]);
+
+  const filteredMatches = useMemo(() => {
+    if (!selectedDate) return matches;
+    return matches.filter(
+      (match) => getLocalDateKey(match.kickoff) === selectedDate
+    );
+  }, [matches, selectedDate]);
 
   async function handleSave(match: any) {
     setSaveStatus((prev) => ({
@@ -406,7 +446,7 @@ export default function Predictions() {
   if (!mounted || authLoading) return null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
+    <main className="pt-28 min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <Navbar />
 
       <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-12">
@@ -427,8 +467,8 @@ export default function Predictions() {
 
               <p className="mx-auto mt-3 max-w-2xl text-sm text-white/75 sm:text-base">
                 {language === "es"
-                  ? "Elige una entrada, guarda tus marcadores antes del inicio y usa tu Comodín estratégicamente para intentar subir en la tabla."
-                  : "Choose an entry, save your scores before kickoff, and use your Joker strategically to climb the leaderboard."}
+                  ? "Elige una entrada, filtra por fecha si quieres, guarda tus marcadores antes del inicio y usa tu Comodín estratégicamente."
+                  : "Choose an entry, filter by date if you want, save your scores before kickoff, and use your Joker strategically."}
               </p>
             </div>
 
@@ -510,241 +550,321 @@ export default function Predictions() {
             )}
           </div>
 
-          <div className="space-y-5">
-            {matches.map((match) => {
-              const isLocked = new Date() > new Date(match.kickoff);
-              const hasSavedPrediction = saveStatus[match.id]?.type === "saved";
-              const isEditing = editing[match.id] ?? !hasSavedPrediction;
-              const isJokerAllowedForRound = JOKER_ALLOWED_ROUNDS.includes(
-                match.round_name
-              );
-
-              const isDisabled =
-                authLoading ||
-                !userId ||
-                !selectedEntryId ||
-                isLocked ||
-                !selectedEntry?.paid ||
-                !isEditing;
-
-              const status = saveStatus[match.id] || { type: "idle" as const };
-
-              return (
-                <div
-                  key={match.id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6"
+          <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="w-full sm:max-w-md">
+                <label className="mb-2 block text-sm font-semibold text-white/85">
+                  {language === "es" ? "Filtrar por fecha" : "Filter by date"}
+                </label>
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition focus:border-yellow-300/40 focus:bg-white/15"
                 >
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <p className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                      {translateRoundName(match.round_name, language)}
-                    </p>
+                  <option value="" className="text-black">
+                    {language === "es" ? "Todos los partidos" : "All matches"}
+                  </option>
+                  {availableDates.map((dateOption) => (
+                    <option
+                      key={dateOption.value}
+                      value={dateOption.value}
+                      className="text-black"
+                    >
+                      {dateOption.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {isLocked && (
-                        <span className="rounded-full border border-red-300/20 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-200">
-                          {language === "es" ? "Bloqueado" : "Locked"}
-                        </span>
-                      )}
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate("")}
+                  className="rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.10]"
+                >
+                  {language === "es" ? "Limpiar filtro" : "Clear filter"}
+                </button>
+              )}
+            </div>
 
-                      {!isLocked && (
-                        <span className="rounded-full border border-green-300/20 bg-green-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-200">
-                          {language === "es" ? "Abierto" : "Open"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+            <p className="mt-3 text-sm text-white/70">
+              {selectedDate
+                ? language === "es"
+                  ? `Mostrando partidos para ${availableDates.find((d) => d.value === selectedDate)?.label || selectedDate}.`
+                  : `Showing matches for ${availableDates.find((d) => d.value === selectedDate)?.label || selectedDate}.`
+                : language === "es"
+                ? "Mostrando todos los partidos en orden cronológico."
+                : "Showing all matches in chronological order."}
+            </p>
+          </div>
 
-                  <div className="mb-2 text-sm font-semibold text-white/70">
-                    {language === "es" ? "Tu predicción" : "Your prediction"}
-                  </div>
+          {filteredMatches.length === 0 ? (
+            <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-center shadow-xl shadow-black/15 backdrop-blur-sm">
+              <p className="text-white/75">
+                {language === "es"
+                  ? "No hay partidos para la fecha seleccionada."
+                  : "There are no matches for the selected date."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {filteredMatches.map((match) => {
+                const isLocked = new Date() > new Date(match.kickoff);
+                const hasSavedPrediction = saveStatus[match.id]?.type === "saved";
+                const isEditing = editing[match.id] ?? !hasSavedPrediction;
+                const isJokerAllowedForRound = JOKER_ALLOWED_ROUNDS.includes(
+                  match.round_name
+                );
 
-                  {/* MOBILE LAYOUT */}
-                  <div className="space-y-3 sm:hidden">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-lg font-bold">
-                        {translateTeamName(match.team_a, language)}
-                      </span>
+                const isDisabled =
+                  authLoading ||
+                  !userId ||
+                  !selectedEntryId ||
+                  isLocked ||
+                  !selectedEntry?.paid ||
+                  !isEditing;
 
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={isDisabled}
-                        value={scores[match.id]?.a || ""}
-                        className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80"
-                        placeholder="0"
-                        onChange={(e) =>
-                          handleChange(match.id, "a", e.target.value)
-                        }
-                      />
-                    </div>
+                const status = saveStatus[match.id] || { type: "idle" as const };
 
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-lg font-bold">
-                        {translateTeamName(match.team_b, language)}
-                      </span>
-
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={isDisabled}
-                        value={scores[match.id]?.b || ""}
-                        className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80"
-                        placeholder="0"
-                        onChange={(e) =>
-                          handleChange(match.id, "b", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  {/* DESKTOP LAYOUT */}
-                  <div className="hidden gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                    <div className="text-left">
-                      <p className="text-lg font-bold sm:text-2xl">
-                        {translateTeamName(match.team_a, language)}
+                return (
+                  <div
+                    key={match.id}
+                    className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6"
+                  >
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                      <p className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                        {translateRoundName(match.round_name, language)}
                       </p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {isLocked && (
+                          <span className="rounded-full border border-red-300/20 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-200">
+                            {language === "es" ? "Bloqueado" : "Locked"}
+                          </span>
+                        )}
+
+                        {!isLocked && (
+                          <span className="rounded-full border border-green-300/20 bg-green-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-200">
+                            {language === "es" ? "Abierto" : "Open"}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-center gap-2 sm:gap-3">
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={isDisabled}
-                        value={scores[match.id]?.a || ""}
-                        className="h-14 w-16 rounded-2xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80 sm:w-20"
-                        placeholder="0"
-                        onChange={(e) =>
-                          handleChange(match.id, "a", e.target.value)
-                        }
-                      />
-
-                      <span className="text-xl font-bold text-white/70">-</span>
-
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={isDisabled}
-                        value={scores[match.id]?.b || ""}
-                        className="h-14 w-16 rounded-2xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80 sm:w-20"
-                        placeholder="0"
-                        onChange={(e) =>
-                          handleChange(match.id, "b", e.target.value)
-                        }
-                      />
+                    <div className="mb-2 text-sm font-semibold text-white/70">
+                      {language === "es" ? "Tu predicción" : "Your prediction"}
                     </div>
 
-                    <div className="text-right">
-                      <p className="text-lg font-bold sm:text-2xl">
-                        {translateTeamName(match.team_b, language)}
-                      </p>
+                    <div className="space-y-3 sm:hidden">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-lg font-bold">
+                          {translateTeamName(match.team_a, language)}
+                        </span>
+
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={isDisabled}
+                          value={scores[match.id]?.a || ""}
+                          className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80"
+                          placeholder="0"
+                          onChange={(e) =>
+                            handleChange(match.id, "a", e.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-lg font-bold">
+                          {translateTeamName(match.team_b, language)}
+                        </span>
+
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={isDisabled}
+                          value={scores[match.id]?.b || ""}
+                          className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80"
+                          placeholder="0"
+                          onChange={(e) =>
+                            handleChange(match.id, "b", e.target.value)
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <p className="mt-4 text-sm text-white/65">
-                    {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
-                    {new Date(match.kickoff).toLocaleString(
-                      language === "es" ? "es-ES" : "en-US",
-                      {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                        hour12: true,
-                      }
-                    )}
-                  </p>
+                    <div className="hidden gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                      <div className="text-left">
+                        <p className="text-lg font-bold sm:text-2xl">
+                          {translateTeamName(match.team_a, language)}
+                        </p>
+                      </div>
 
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        disabled={isDisabled || !isJokerAllowedForRound}
-                        checked={scores[match.id]?.joker || false}
-                        onChange={(e) =>
-                          handleJokerChange(match.id, e.target.checked)
-                        }
-                        className="mt-1 h-4 w-4 rounded border-white/20"
-                      />
+                      <div className="flex items-center justify-center gap-2 sm:gap-3">
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={isDisabled}
+                          value={scores[match.id]?.a || ""}
+                          className="h-14 w-16 rounded-2xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80 sm:w-20"
+                          placeholder="0"
+                          onChange={(e) =>
+                            handleChange(match.id, "a", e.target.value)
+                          }
+                        />
 
-                      <div>
-                        <label className="text-sm font-semibold text-white">
-                          {language === "es"
-                            ? "Comodín (doble puntaje)"
-                            : "Joker (double points)"}
-                        </label>
+                        <span className="text-xl font-bold text-white/70">-</span>
 
-                        <p className="mt-1 text-xs text-white/60">
-                          {language === "es"
-                            ? "Disponible en fase de grupos, dieciseisavos y octavos. Solo uno por ronda en cada entrada."
-                            : "Available in the Group Stage, Round of 32, and Round of 16. Only one per round for each entry."}
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={isDisabled}
+                          value={scores[match.id]?.b || ""}
+                          className="h-14 w-16 rounded-2xl border border-white/15 bg-white/10 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:bg-gray-700/80 sm:w-20"
+                          placeholder="0"
+                          onChange={(e) =>
+                            handleChange(match.id, "b", e.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-lg font-bold sm:text-2xl">
+                          {translateTeamName(match.team_b, language)}
                         </p>
                       </div>
                     </div>
 
-                    {!isJokerAllowedForRound && (
-                      <p className="mt-3 text-sm text-yellow-300">
-                        {language === "es"
-                          ? "El comodín solo está disponible hasta octavos de final."
-                          : "The Joker is only available through the Round of 16."}
+                    <p className="mt-4 text-sm text-white/65">
+                      {language === "es" ? "Inicio:" : "Kickoff:"}{" "}
+                      {new Date(match.kickoff).toLocaleString(
+                        language === "es" ? "es-ES" : "en-US",
+                        {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                          hour12: true,
+                        }
+                      )}
+                    </p>
+
+                    {match.is_finished && (
+                      <div className="mt-4 rounded-2xl border border-green-300/20 bg-green-400/10 p-4">
+                        <p className="text-sm font-semibold text-green-100">
+                          {language === "es" ? "Resultado final" : "Final result"}
+                        </p>
+
+                        <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                          <p className="font-bold text-left">
+                            {translateTeamName(match.team_a, language)}
+                          </p>
+
+                          <div className="rounded-xl border border-green-300/20 bg-black/10 px-4 py-2 text-center">
+                            <p className="text-lg font-black">
+                              {match.score_a} - {match.score_b}
+                            </p>
+                          </div>
+
+                          <p className="font-bold text-right">
+                            {translateTeamName(match.team_b, language)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          disabled={isDisabled || !isJokerAllowedForRound}
+                          checked={scores[match.id]?.joker || false}
+                          onChange={(e) =>
+                            handleJokerChange(match.id, e.target.checked)
+                          }
+                          className="mt-1 h-4 w-4 rounded border-white/20"
+                        />
+
+                        <div>
+                          <label className="text-sm font-semibold text-white">
+                            {language === "es"
+                              ? "Comodín (doble puntaje)"
+                              : "Joker (double points)"}
+                          </label>
+
+                          <p className="mt-1 text-xs text-white/60">
+                            {language === "es"
+                              ? "Disponible en fase de grupos, dieciseisavos y octavos. Solo uno por ronda en cada entrada."
+                              : "Available in the Group Stage, Round of 32, and Round of 16. Only one per round for each entry."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!isJokerAllowedForRound && (
+                        <p className="mt-3 text-sm text-yellow-300">
+                          {language === "es"
+                            ? "El comodín solo está disponible hasta octavos de final."
+                            : "The Joker is only available through the Round of 16."}
+                        </p>
+                      )}
+                    </div>
+
+                    {isLocked && (
+                      <p className="mt-4 text-sm text-red-300">
+                        {t.predictions.locked}
                       </p>
                     )}
-                  </div>
 
-                  {isLocked && (
-                    <p className="mt-4 text-sm text-red-300">
-                      {t.predictions.locked}
-                    </p>
-                  )}
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+                      {hasSavedPrediction && !isEditing ? (
+                        <>
+                          <button
+                            onClick={() => handleEdit(match.id)}
+                            disabled={isLocked || !selectedEntry?.paid}
+                            className="w-full rounded-2xl bg-yellow-300 px-5 py-3 font-bold text-green-950 transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:bg-gray-500 sm:w-auto"
+                          >
+                            {language === "es" ? "Editar" : "Edit"}
+                          </button>
 
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                    {hasSavedPrediction && !isEditing ? (
-                      <>
+                          <div className="inline-flex items-center rounded-full border border-green-300/20 bg-green-400/10 px-4 py-2 text-sm font-semibold text-green-200">
+                            {language === "es"
+                              ? "Predicción guardada"
+                              : "Prediction saved"}
+                          </div>
+                        </>
+                      ) : (
                         <button
-                          onClick={() => handleEdit(match.id)}
-                          disabled={isLocked || !selectedEntry?.paid}
-                          className="w-full rounded-2xl bg-yellow-300 px-5 py-3 font-bold text-green-950 transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:bg-gray-500 sm:w-auto"
+                          onClick={() => handleSave(match)}
+                          disabled={
+                            authLoading ||
+                            !userId ||
+                            !selectedEntryId ||
+                            isLocked ||
+                            !selectedEntry?.paid
+                          }
+                          className={`w-full rounded-2xl px-5 py-3 font-bold transition sm:w-auto ${
+                            status.type === "saving"
+                              ? "bg-yellow-300 text-green-950"
+                              : status.type === "saved"
+                              ? "bg-green-400 text-green-950"
+                              : "bg-white text-green-950 hover:bg-yellow-200"
+                          } disabled:cursor-not-allowed disabled:bg-gray-500 disabled:text-white`}
                         >
-                          {language === "es" ? "Editar" : "Edit"}
-                        </button>
-
-                        <div className="inline-flex items-center rounded-full border border-green-300/20 bg-green-400/10 px-4 py-2 text-sm font-semibold text-green-200">
-                          {language === "es"
-                            ? "Predicción guardada"
-                            : "Prediction saved"}
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => handleSave(match)}
-                        disabled={
-                          authLoading ||
-                          !userId ||
-                          !selectedEntryId ||
-                          isLocked ||
-                          !selectedEntry?.paid
-                        }
-                        className={`w-full rounded-2xl px-5 py-3 font-bold transition sm:w-auto ${
-                          status.type === "saving"
-                            ? "bg-yellow-300 text-green-950"
+                          {status.type === "saving"
+                            ? t.common.saving
                             : status.type === "saved"
-                            ? "bg-green-400 text-green-950"
-                            : "bg-white text-green-950 hover:bg-yellow-200"
-                        } disabled:cursor-not-allowed disabled:bg-gray-500 disabled:text-white`}
-                      >
-                        {status.type === "saving"
-                          ? t.common.saving
-                          : status.type === "saved"
-                          ? t.common.saved
-                          : t.common.save}
-                      </button>
-                    )}
+                            ? t.common.saved
+                            : t.common.save}
+                        </button>
+                      )}
 
-                    {status.type === "error" && (
-                      <p className="text-sm text-red-300">{status.message}</p>
-                    )}
+                      {status.type === "error" && (
+                        <p className="text-sm text-red-300">{status.message}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
     </main>

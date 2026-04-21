@@ -3,16 +3,36 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 
 export default function Navbar() {
   const { language, setLanguage, mounted } = useLanguage();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [showNavbar, setShowNavbar] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    function handleScroll() {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        setShowNavbar(false);
+      } else {
+        setShowNavbar(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    }
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   useEffect(() => {
     async function loadUser() {
@@ -44,6 +64,16 @@ export default function Navbar() {
     router.refresh();
   }
 
+  function navClass(path: string) {
+    const isActive = pathname === path;
+
+    return `rounded-full px-4 py-2 text-sm font-semibold transition ${
+      isActive
+        ? "bg-yellow-300 text-green-950 shadow-md"
+        : "border border-white/10 bg-white/[0.04] text-white/85 hover:border-yellow-300/30 hover:bg-white/[0.08] hover:text-white"
+    }`;
+  }
+
   if (!mounted) return null;
 
   const userLabel =
@@ -51,7 +81,11 @@ export default function Navbar() {
     (language === "es" ? "Usuario" : "User");
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10 bg-green-950/80 backdrop-blur-md">
+    <nav
+      className={`fixed top-0 left-0 z-50 w-full border-b border-white/10 bg-green-950/80 backdrop-blur-md transition-transform duration-300 ${
+        showNavbar ? "translate-y-0" : "-translate-y-full"
+      }`}
+    >
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 md:px-8">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-6">
@@ -83,32 +117,24 @@ export default function Navbar() {
             </Link>
 
             <div className="flex flex-wrap justify-center gap-2 xl:justify-start">
-              <Link
-                href="/"
-                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-yellow-300/30 hover:bg-white/[0.08] hover:text-white"
-              >
+              <Link href="/" className={navClass("/")}>
                 {language === "es" ? "Inicio" : "Home"}
               </Link>
 
-              <Link
-                href="/predictions"
-                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-yellow-300/30 hover:bg-white/[0.08] hover:text-white"
-              >
+              <Link href="/entries" className={navClass("/entries")}>
+                {language === "es" ? "Entradas" : "Entries"}
+              </Link>
+
+              <Link href="/predictions" className={navClass("/predictions")}>
                 {language === "es" ? "Predicciones" : "Predictions"}
               </Link>
 
-              <Link
-                href="/leaderboard"
-                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-yellow-300/30 hover:bg-white/[0.08] hover:text-white"
-              >
-                {language === "es" ? "Tabla" : "Leaderboard"}
+              <Link href="/matches" className={navClass("/matches")}>
+                {language === "es" ? "Partidos" : "Matches"}
               </Link>
 
-              <Link
-                href="/entries"
-                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-yellow-300/30 hover:bg-white/[0.08] hover:text-white"
-              >
-                {language === "es" ? "Entradas" : "Entries"}
+              <Link href="/leaderboard" className={navClass("/leaderboard")}>
+                {language === "es" ? "Tabla" : "Leaderboard"}
               </Link>
             </div>
           </div>
@@ -137,10 +163,7 @@ export default function Navbar() {
                     </>
                   ) : (
                     <>
-                      <Link
-                        href="/login"
-                        className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-yellow-300/30 hover:bg-white/[0.08] hover:text-white"
-                      >
+                      <Link href="/login" className={navClass("/login")}>
                         {language === "es" ? "Iniciar sesión" : "Login"}
                       </Link>
 

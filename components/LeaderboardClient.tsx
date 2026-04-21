@@ -48,6 +48,52 @@ function calculatePoints(pred: any, match: any) {
   return points;
 }
 
+function getResultReason(
+  item: {
+    predA: number;
+    predB: number;
+    actualA: number;
+    actualB: number;
+    joker: boolean;
+  },
+  language: "en" | "es"
+) {
+  if (item.predA === item.actualA && item.predB === item.actualB) {
+    return language === "es"
+      ? item.joker
+        ? "Marcador exacto con Comodín"
+        : "Marcador exacto"
+      : item.joker
+      ? "Exact score with Joker"
+      : "Exact score";
+  }
+
+  if (
+    (item.actualA > item.actualB && item.predA > item.predB) ||
+    (item.actualA < item.actualB && item.predA < item.predB)
+  ) {
+    return language === "es"
+      ? item.joker
+        ? "Resultado correcto con Comodín"
+        : "Resultado correcto"
+      : item.joker
+      ? "Correct result with Joker"
+      : "Correct result";
+  }
+
+  if (item.actualA === item.actualB && item.predA === item.predB) {
+    return language === "es"
+      ? item.joker
+        ? "Empate correcto con Comodín"
+        : "Empate correcto"
+      : item.joker
+      ? "Correct draw with Joker"
+      : "Correct draw";
+  }
+
+  return language === "es" ? "Sin puntos" : "No points";
+}
+
 function getRankCardStyles(rank: number) {
   if (rank === 1) {
     return {
@@ -144,7 +190,7 @@ export default function LeaderboardClient({
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
+    <main className="pt-28 min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <Navbar />
 
       <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
@@ -332,13 +378,38 @@ export default function LeaderboardClient({
                                     </p>
                                   </div>
 
-                                  <div className="mt-4 flex items-center justify-between">
-                                    <p className="text-sm font-semibold opacity-85">
-                                      {language === "es" ? "Puntos" : "Points"}
+                                  <div className="mt-3 rounded-xl border border-green-300/20 bg-green-400/10 p-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-green-200">
+                                      {language === "es" ? "Resultado final" : "Final result"}
                                     </p>
 
+                                    <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                                      <span className="font-semibold text-left">
+                                        {translateTeamName(item.teamA, language)}
+                                      </span>
+
+                                      <span className="text-lg font-black">
+                                        {item.actualA} - {item.actualB}
+                                      </span>
+
+                                      <span className="font-semibold text-right">
+                                        {translateTeamName(item.teamB, language)}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4 flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-semibold opacity-85">
+                                        {language === "es" ? "Puntos" : "Points"}
+                                      </p>
+                                      <p className="mt-1 text-xs opacity-70">
+                                        {getResultReason(item, language)}
+                                      </p>
+                                    </div>
+
                                     <div className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-sm font-extrabold">
-                                      {item.points}
+                                      +{item.points}
                                     </div>
                                   </div>
                                 </div>
