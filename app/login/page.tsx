@@ -13,6 +13,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -106,16 +107,31 @@ export default function LoginPage() {
               <label className="mb-2 block text-sm font-semibold text-white/85">
                 {language === "es" ? "Contraseña" : "Password"}
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
-                placeholder={
-                  language === "es" ? "Tu contraseña" : "Your password"
-                }
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 p-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+                  placeholder={
+                    language === "es" ? "Tu contraseña" : "Your password"
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-white/75 hover:text-white"
+                >
+                  {showPassword
+                    ? language === "es"
+                      ? "Ocultar"
+                      : "Hide"
+                    : language === "es"
+                    ? "Ver"
+                    : "Show"}
+                </button>
+              </div>
             </div>
 
             <button
