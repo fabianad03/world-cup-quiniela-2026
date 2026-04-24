@@ -3,6 +3,18 @@
 import Navbar from "@/components/Navbar";
 import { useLanguage } from "@/components/LanguageProvider";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
+import { getActualAdvancingTeam, isKnockoutRound } from "@/lib/scoring";
+
+function getTeamLabel(
+  value: "team_a" | "team_b" | null,
+  teamA: string,
+  teamB: string,
+  language: "en" | "es"
+) {
+  if (value === "team_a") return translateTeamName(teamA, language);
+  if (value === "team_b") return translateTeamName(teamB, language);
+  return language === "es" ? "No seleccionado" : "Not selected";
+}
 
 export default function MatchesPageClient({
   matches,
@@ -29,7 +41,9 @@ export default function MatchesPageClient({
           <div className="mb-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
             <div className="text-center">
               <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
-                {language === "es" ? "Partidos y resultados" : "Matches and results"}
+                {language === "es"
+                  ? "Partidos y resultados"
+                  : "Matches and results"}
               </div>
 
               <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
@@ -72,38 +86,65 @@ export default function MatchesPageClient({
               </div>
             ) : (
               <div className="space-y-4">
-                {finishedMatches.map((match) => (
-                  <div
-                    key={match.id}
-                    className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm"
-                  >
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <p className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                        {translateRoundName(match.round_name, language)}
-                      </p>
+                {finishedMatches.map((match) => {
+                  const isKnockout = isKnockoutRound(match.round_name);
+                  const actualAdvancingTeam = getActualAdvancingTeam(match);
 
-                      <span className="rounded-full border border-green-300/20 bg-green-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-200">
-                        {language === "es" ? "Finalizado" : "Final"}
-                      </span>
-                    </div>
+                  return (
+                    <div
+                      key={match.id}
+                      className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm"
+                    >
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <p className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                          {translateRoundName(match.round_name, language)}
+                        </p>
 
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                      <p className="text-lg font-bold sm:text-2xl text-left">
-                        {translateTeamName(match.team_a, language)}
-                      </p>
+                        <span className="rounded-full border border-green-300/20 bg-green-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-200">
+                          {language === "es" ? "Finalizado" : "Final"}
+                        </span>
+                      </div>
 
-                      <div className="rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-2 text-center">
-                        <p className="text-xl font-black sm:text-2xl">
-                          {match.score_a} - {match.score_b}
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                        <p className="text-left text-lg font-bold sm:text-2xl">
+                          {translateTeamName(match.team_a, language)}
+                        </p>
+
+                        <div className="rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-2 text-center">
+                          <p className="text-xl font-black sm:text-2xl">
+                            {match.score_a} - {match.score_b}
+                          </p>
+                        </div>
+
+                        <p className="text-right text-lg font-bold sm:text-2xl">
+                          {translateTeamName(match.team_b, language)}
                         </p>
                       </div>
 
-                      <p className="text-lg font-bold sm:text-2xl text-right">
-                        {translateTeamName(match.team_b, language)}
-                      </p>
+                      {isKnockout && actualAdvancingTeam && (
+                        <div className="mt-4 rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-3 text-sm text-green-100">
+                          {language === "es" ? "Equipo clasificado:" : "Advanced:"}{" "}
+                          <span className="font-bold">
+                            {getTeamLabel(
+                              actualAdvancingTeam,
+                              match.team_a,
+                              match.team_b,
+                              language
+                            )}
+                          </span>
+                          {match.penalty_winner && (
+                            <span>
+                              {" "}
+                              {language === "es"
+                                ? "(por penales)"
+                                : "(on penalties)"}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

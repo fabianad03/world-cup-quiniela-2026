@@ -5,6 +5,13 @@ import Navbar from "@/components/Navbar";
 import { useLanguage } from "@/components/LanguageProvider";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
 import PrizePoolCard from "@/components/PrizePoolCard";
+import {
+  calculatePoints,
+  getResultReason,
+  getActualAdvancingTeam,
+  getPredictedAdvancingTeam,
+  isKnockoutRound,
+} from "@/lib/scoring";
 
 function getPlaceLabel(index: number, language: "en" | "es") {
   if (language === "es") {
@@ -20,78 +27,15 @@ function getPlaceLabel(index: number, language: "en" | "es") {
   return `#${index + 1}`;
 }
 
-function calculatePoints(pred: any, match: any) {
-  if (!match.is_finished) return 0;
-
-  const actualA = match.score_a;
-  const actualB = match.score_b;
-  const predA = pred.pred_a;
-  const predB = pred.pred_b;
-
-  let points = 0;
-
-  if (predA === actualA && predB === actualB) {
-    points = 5;
-  } else if (
-    (actualA > actualB && predA > predB) ||
-    (actualA < actualB && predA < predB)
-  ) {
-    points = 3;
-  } else if (actualA === actualB && predA === predB) {
-    points = 2;
-  }
-
-  if (pred.joker) {
-    points *= 2;
-  }
-
-  return points;
-}
-
-function getResultReason(
-  item: {
-    predA: number;
-    predB: number;
-    actualA: number;
-    actualB: number;
-    joker: boolean;
-  },
+function getTeamLabel(
+  value: "team_a" | "team_b" | null,
+  teamA: string,
+  teamB: string,
   language: "en" | "es"
 ) {
-  if (item.predA === item.actualA && item.predB === item.actualB) {
-    return language === "es"
-      ? item.joker
-        ? "Marcador exacto con Comodín"
-        : "Marcador exacto"
-      : item.joker
-      ? "Exact score with Joker"
-      : "Exact score";
-  }
-
-  if (
-    (item.actualA > item.actualB && item.predA > item.predB) ||
-    (item.actualA < item.actualB && item.predA < item.predB)
-  ) {
-    return language === "es"
-      ? item.joker
-        ? "Resultado correcto con Comodín"
-        : "Resultado correcto"
-      : item.joker
-      ? "Correct result with Joker"
-      : "Correct result";
-  }
-
-  if (item.actualA === item.actualB && item.predA === item.predB) {
-    return language === "es"
-      ? item.joker
-        ? "Empate correcto con Comodín"
-        : "Empate correcto"
-      : item.joker
-      ? "Correct draw with Joker"
-      : "Correct draw";
-  }
-
-  return language === "es" ? "Sin puntos" : "No points";
+  if (value === "team_a") return translateTeamName(teamA, language);
+  if (value === "team_b") return translateTeamName(teamB, language);
+  return language === "es" ? "No seleccionado" : "Not selected";
 }
 
 function getRankCardStyles(rank: number) {
@@ -146,6 +90,20 @@ export default function LeaderboardClient({
   const { t, language, mounted } = useLanguage();
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 
+  const tiedPointTotals = useMemo(() => {
+    const counts: Record<number, number> = {};
+
+    leaderboard.forEach((entry: any) => {
+      counts[entry.total_points] = (counts[entry.total_points] || 0) + 1;
+    });
+
+    return counts;
+  }, [leaderboard]);
+
+  function isTied(entry: any) {
+    return tiedPointTotals[entry.total_points] > 1;
+  }
+
   const breakdownByEntry = useMemo(() => {
     const grouped: Record<string, any[]> = {};
 
@@ -154,6 +112,9 @@ export default function LeaderboardClient({
       if (!match || !match.is_finished) return;
 
       const pts = calculatePoints(pred, match);
+      const actualAdvancingTeam = getActualAdvancingTeam(match);
+      const predictedAdvancingTeam = getPredictedAdvancingTeam(pred);
+      const isKnockout = isKnockoutRound(match.round_name);
 
       if (!grouped[pred.entry_id]) {
         grouped[pred.entry_id] = [];
@@ -169,7 +130,13 @@ export default function LeaderboardClient({
         actualA: match.score_a,
         actualB: match.score_b,
         joker: pred.joker,
+        advancePick: pred.advance_pick || null,
+        penaltyWinner: match.penalty_winner || null,
+        actualAdvancingTeam,
+        predictedAdvancingTeam,
+        isKnockout,
         points: pts,
+        reason: getResultReason(pred, match, language),
       });
     });
 
@@ -185,7 +152,7 @@ export default function LeaderboardClient({
     });
 
     return grouped;
-  }, [matches, predictions]);
+  }, [matches, predictions, language]);
 
   if (!mounted) return null;
 
@@ -230,6 +197,7 @@ export default function LeaderboardClient({
                 const isExpanded = expandedEntryId === entry.entry_id;
                 const breakdown = breakdownByEntry[entry.entry_id] || [];
                 const styles = getRankCardStyles(rank);
+                const tied = isTied(entry);
 
                 return (
                   <div
@@ -254,7 +222,15 @@ export default function LeaderboardClient({
 
                             {rank === 1 && (
                               <span className="inline-flex rounded-full border border-green-950/10 bg-green-950/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-green-950">
-                                {language === "es" ? "Líder actual" : "Current leader"}
+                                {language === "es"
+                                  ? "Líder actual"
+                                  : "Current leader"}
+                              </span>
+                            )}
+
+                            {tied && (
+                              <span className="inline-flex rounded-full border border-yellow-300/30 bg-yellow-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-yellow-100">
+                                {language === "es" ? "Empate" : "Tie"}
                               </span>
                             )}
                           </div>
@@ -262,6 +238,14 @@ export default function LeaderboardClient({
                           <p className="truncate text-2xl font-extrabold sm:text-3xl">
                             {entry.entry_name}
                           </p>
+
+                          {tied && (
+                            <p className={`mt-2 text-sm ${styles.subtext}`}>
+                              {language === "es"
+                                ? `Desempate: ${entry.total_goals_guess ?? "—"} goles · diferencia ${entry.tiebreaker_difference ?? "—"}`
+                                : `Tiebreaker: ${entry.total_goals_guess ?? "—"} goals · difference ${entry.tiebreaker_difference ?? "—"}`}
+                            </p>
+                          )}
 
                           <p className={`mt-2 text-sm ${styles.subtext}`}>
                             {language === "es"
@@ -272,12 +256,16 @@ export default function LeaderboardClient({
 
                         <div className="shrink-0 text-right">
                           <p className="text-[11px] uppercase tracking-[0.18em] opacity-70">
-                            {language === "es" ? "Puntos totales" : "Total points"}
+                            {language === "es"
+                              ? "Puntos totales"
+                              : "Total points"}
                           </p>
                           <p className="text-3xl font-black sm:text-4xl">
                             {entry.total_points}
                           </p>
-                          <p className={`mt-2 text-xs font-semibold ${styles.subtext}`}>
+                          <p
+                            className={`mt-2 text-xs font-semibold ${styles.subtext}`}
+                          >
                             {isExpanded
                               ? language === "es"
                                 ? "Ocultar detalle"
@@ -291,9 +279,13 @@ export default function LeaderboardClient({
                     </button>
 
                     {isExpanded && (
-                      <div className={`border-t px-5 pb-5 pt-4 sm:px-6 sm:pb-6 ${styles.divider}`}>
+                      <div
+                        className={`border-t px-5 pb-5 pt-4 sm:px-6 sm:pb-6 ${styles.divider}`}
+                      >
                         {breakdown.length === 0 ? (
-                          <div className={`rounded-2xl border p-4 ${styles.accent}`}>
+                          <div
+                            className={`rounded-2xl border p-4 ${styles.accent}`}
+                          >
                             <p className={`text-sm ${styles.subtext}`}>
                               {language === "es"
                                 ? "Todavía no hay partidos finalizados para esta entrada."
@@ -349,7 +341,7 @@ export default function LeaderboardClient({
 
                                   <p className="text-lg font-bold sm:text-xl">
                                     {translateTeamName(item.teamA, language)}{" "}
-                                    <span className="mx-2 opacity-60">vs</span>
+                                    <span className="mx-2 opacity-60">vs</span>{" "}
                                     {translateTeamName(item.teamB, language)}
                                   </p>
 
@@ -368,6 +360,22 @@ export default function LeaderboardClient({
                                         : ""}
                                     </p>
 
+                                    {item.isKnockout && (
+                                      <p>
+                                        {language === "es"
+                                          ? "Equipo clasificado elegido:"
+                                          : "Chosen advancing team:"}{" "}
+                                        <span className="font-semibold">
+                                          {getTeamLabel(
+                                            item.predictedAdvancingTeam,
+                                            item.teamA,
+                                            item.teamB,
+                                            language
+                                          )}
+                                        </span>
+                                      </p>
+                                    )}
+
                                     <p>
                                       {language === "es"
                                         ? "Resultado final:"
@@ -380,12 +388,17 @@ export default function LeaderboardClient({
 
                                   <div className="mt-3 rounded-xl border border-green-300/20 bg-green-400/10 p-3">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-green-200">
-                                      {language === "es" ? "Resultado final" : "Final result"}
+                                      {language === "es"
+                                        ? "Resultado final"
+                                        : "Final result"}
                                     </p>
 
                                     <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                                       <span className="font-semibold text-left">
-                                        {translateTeamName(item.teamA, language)}
+                                        {translateTeamName(
+                                          item.teamA,
+                                          language
+                                        )}
                                       </span>
 
                                       <span className="text-lg font-black">
@@ -393,9 +406,36 @@ export default function LeaderboardClient({
                                       </span>
 
                                       <span className="font-semibold text-right">
-                                        {translateTeamName(item.teamB, language)}
+                                        {translateTeamName(
+                                          item.teamB,
+                                          language
+                                        )}
                                       </span>
                                     </div>
+
+                                    {item.isKnockout && (
+                                      <p className="mt-3 text-sm text-green-100">
+                                        {language === "es"
+                                          ? "Equipo clasificado:"
+                                          : "Advanced:"}{" "}
+                                        <span className="font-bold">
+                                          {getTeamLabel(
+                                            item.actualAdvancingTeam,
+                                            item.teamA,
+                                            item.teamB,
+                                            language
+                                          )}
+                                        </span>
+                                        {item.penaltyWinner && (
+                                          <span>
+                                            {" "}
+                                            {language === "es"
+                                              ? "(por penales)"
+                                              : "(on penalties)"}
+                                          </span>
+                                        )}
+                                      </p>
+                                    )}
                                   </div>
 
                                   <div className="mt-4 flex items-center justify-between">
@@ -404,7 +444,7 @@ export default function LeaderboardClient({
                                         {language === "es" ? "Puntos" : "Points"}
                                       </p>
                                       <p className="mt-1 text-xs opacity-70">
-                                        {getResultReason(item, language)}
+                                        {item.reason}
                                       </p>
                                     </div>
 

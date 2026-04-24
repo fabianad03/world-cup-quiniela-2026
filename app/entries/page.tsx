@@ -6,34 +6,13 @@ import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
-
-function calculatePoints(pred: any, match: any) {
-  if (!match.is_finished) return 0;
-
-  const actualA = match.score_a;
-  const actualB = match.score_b;
-  const predA = pred.pred_a;
-  const predB = pred.pred_b;
-
-  let points = 0;
-
-  if (predA === actualA && predB === actualB) {
-    points = 5;
-  } else if (
-    (actualA > actualB && predA > predB) ||
-    (actualA < actualB && predA < predB)
-  ) {
-    points = 3;
-  } else if (actualA === actualB && predA === predB) {
-    points = 2;
-  }
-
-  if (pred.joker) {
-    points *= 2;
-  }
-
-  return points;
-}
+import {
+  calculatePoints,
+  getResultReason,
+  getActualAdvancingTeam,
+  getPredictedAdvancingTeam,
+  isKnockoutRound,
+} from "@/lib/scoring";
 
 function getPlaceLabel(rank: number, language: "en" | "es") {
   if (language === "es") {
@@ -49,53 +28,15 @@ function getPlaceLabel(rank: number, language: "en" | "es") {
   return `#${rank}`;
 }
 
-function getResultReason(item: {
-  predA: number;
-  predB: number;
-  actualA: number | null;
-  actualB: number | null;
-  isFinished: boolean;
-  points: number;
-  joker: boolean;
-}, language: "en" | "es") {
-  if (!item.isFinished || item.actualA === null || item.actualB === null) {
-    return language === "es" ? "Pendiente" : "Pending";
-  }
-
-  if (item.predA === item.actualA && item.predB === item.actualB) {
-    return language === "es"
-      ? item.joker
-        ? "Marcador exacto con Comodín"
-        : "Marcador exacto"
-      : item.joker
-      ? "Exact score with Joker"
-      : "Exact score";
-  }
-
-  if (
-    (item.actualA > item.actualB && item.predA > item.predB) ||
-    (item.actualA < item.actualB && item.predA < item.predB)
-  ) {
-    return language === "es"
-      ? item.joker
-        ? "Ganador correcto con Comodín"
-        : "Ganador correcto"
-      : item.joker
-      ? "Correct winner with Joker"
-      : "Correct winner";
-  }
-
-  if (item.actualA === item.actualB && item.predA === item.predB) {
-    return language === "es"
-      ? item.joker
-        ? "Empate correcto con Comodín"
-        : "Empate correcto"
-      : item.joker
-      ? "Correct draw with Joker"
-      : "Correct draw";
-  }
-
-  return language === "es" ? "Sin puntos" : "No points";
+function getTeamLabel(
+  value: "team_a" | "team_b" | null,
+  teamA: string,
+  teamB: string,
+  language: "en" | "es"
+) {
+  if (value === "team_a") return translateTeamName(teamA, language);
+  if (value === "team_b") return translateTeamName(teamB, language);
+  return language === "es" ? "No seleccionado" : "Not selected";
 }
 
 export default function EntriesPage() {
@@ -107,6 +48,8 @@ export default function EntriesPage() {
   const [matches, setMatches] = useState<any[]>([]);
   const [predictions, setPredictions] = useState<any[]>([]);
   const [entryName, setEntryName] = useState("");
+  const [totalGoalsGuess, setTotalGoalsGuess] = useState("");
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -185,6 +128,15 @@ export default function EntriesPage() {
       return;
     }
 
+    if (!totalGoalsGuess || Number(totalGoalsGuess) < 0) {
+      setMessage(
+        language === "es"
+          ? "Por favor ingresa una predicción válida para el total de goles."
+          : "Please enter a valid total goals guess."
+      );
+      return;
+    }
+
     if (entries.length >= 5) {
       setMessage(t.entries.maxError);
       return;
@@ -197,6 +149,7 @@ export default function EntriesPage() {
         user_id: userId,
         entry_name: entryName,
         paid: false,
+        total_goals_guess: Number(totalGoalsGuess),
       },
     ]);
 
@@ -205,6 +158,7 @@ export default function EntriesPage() {
     } else {
       setMessage(t.entries.success);
       setEntryName("");
+      setTotalGoalsGuess("");
       await refreshData();
     }
   }
@@ -224,8 +178,14 @@ export default function EntriesPage() {
           actualA: number | null;
           actualB: number | null;
           joker: boolean;
+          advancePick: "team_a" | "team_b" | null;
+          penaltyWinner: "team_a" | "team_b" | null;
+          actualAdvancingTeam: "team_a" | "team_b" | null;
+          predictedAdvancingTeam: "team_a" | "team_b" | null;
           isFinished: boolean;
+          isKnockout: boolean;
           points: number;
+          reason: string;
           kickoff: string;
         }>;
       }
@@ -243,6 +203,9 @@ export default function EntriesPage() {
       if (!match) return;
 
       const points = calculatePoints(pred, match);
+      const actualAdvancingTeam = getActualAdvancingTeam(match);
+      const predictedAdvancingTeam = getPredictedAdvancingTeam(pred);
+      const isKnockout = isKnockoutRound(match.round_name);
 
       if (!grouped[pred.entry_id]) {
         grouped[pred.entry_id] = {
@@ -261,8 +224,14 @@ export default function EntriesPage() {
         actualA: match.score_a,
         actualB: match.score_b,
         joker: pred.joker,
+        advancePick: pred.advance_pick || null,
+        penaltyWinner: match.penalty_winner || null,
+        actualAdvancingTeam,
+        predictedAdvancingTeam,
         isFinished: match.is_finished,
+        isKnockout,
         points,
+        reason: getResultReason(pred, match, language),
         kickoff: match.kickoff,
       });
 
@@ -277,7 +246,7 @@ export default function EntriesPage() {
     });
 
     return grouped;
-  }, [allEntries, predictions, matches]);
+  }, [allEntries, predictions, matches, language]);
 
   const placementByEntry = useMemo(() => {
     const paidEntries = allEntries.filter((entry) => entry.paid);
@@ -348,61 +317,47 @@ export default function EntriesPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
-                  1
+              {[
+                {
+                  esTitle: "Crea entradas",
+                  enTitle: "Create entries",
+                  esText: "Haz hasta 5 entradas con el nombre que quieras.",
+                  enText: "Create up to 5 entries with the names you want.",
+                },
+                {
+                  esTitle: "Realiza el pago",
+                  enTitle: "Make payment",
+                  esText: "Cada entrada debe pagarse para poder activarse.",
+                  enText: "Each entry must be paid before it becomes active.",
+                },
+                {
+                  esTitle: "Espera aprobación",
+                  enTitle: "Wait for approval",
+                  esText: "Cuando se marque como pagada, quedará lista para jugar.",
+                  enText: "Once it is marked as paid, it will be ready to play.",
+                },
+                {
+                  esTitle: "Ve a predecir",
+                  enTitle: "Go predict",
+                  esText: "Luego usa esa entrada en la página de predicciones.",
+                  enText: "Then use that entry on the predictions page.",
+                },
+              ].map((step, index) => (
+                <div
+                  key={index}
+                  className="rounded-2xl border border-white/10 bg-black/10 p-4"
+                >
+                  <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
+                    {index + 1}
+                  </div>
+                  <h3 className="text-base font-bold">
+                    {language === "es" ? step.esTitle : step.enTitle}
+                  </h3>
+                  <p className="mt-2 text-sm text-white/70">
+                    {language === "es" ? step.esText : step.enText}
+                  </p>
                 </div>
-                <h3 className="text-base font-bold">
-                  {language === "es" ? "Crea entradas" : "Create entries"}
-                </h3>
-                <p className="mt-2 text-sm text-white/70">
-                  {language === "es"
-                    ? "Haz hasta 5 entradas con el nombre que quieras."
-                    : "Create up to 5 entries with the names you want."}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
-                  2
-                </div>
-                <h3 className="text-base font-bold">
-                  {language === "es" ? "Realiza el pago" : "Make payment"}
-                </h3>
-                <p className="mt-2 text-sm text-white/70">
-                  {language === "es"
-                    ? "Cada entrada debe pagarse para poder activarse."
-                    : "Each entry must be paid before it becomes active."}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
-                  3
-                </div>
-                <h3 className="text-base font-bold">
-                  {language === "es" ? "Espera aprobación" : "Wait for approval"}
-                </h3>
-                <p className="mt-2 text-sm text-white/70">
-                  {language === "es"
-                    ? "Cuando se marque como pagada, quedará lista para jugar."
-                    : "Once it is marked as paid, it will be ready to play."}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-yellow-300 text-sm font-black text-green-950">
-                  4
-                </div>
-                <h3 className="text-base font-bold">
-                  {language === "es" ? "Ve a predecir" : "Go predict"}
-                </h3>
-                <p className="mt-2 text-sm text-white/70">
-                  {language === "es"
-                    ? "Luego usa esa entrada en la página de predicciones."
-                    : "Then use that entry on the predictions page."}
-                </p>
-              </div>
+              ))}
             </div>
 
             <div className="mt-5 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
@@ -414,22 +369,33 @@ export default function EntriesPage() {
 
           <div className="mb-10 rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-2xl font-bold">
-                {t.entries.createTitle}
-              </h2>
+              <h2 className="text-2xl font-bold">{t.entries.createTitle}</h2>
 
               <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75">
                 {entries.length}/5 {t.entries.used}
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
               <input
                 type="text"
                 value={entryName}
                 onChange={(e) => setEntryName(e.target.value)}
                 placeholder={t.entries.placeholder}
-                className="flex-1 rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              />
+
+              <input
+                type="number"
+                min={0}
+                value={totalGoalsGuess}
+                onChange={(e) => setTotalGoalsGuess(e.target.value)}
+                placeholder={
+                  language === "es"
+                    ? "Total de goles del torneo"
+                    : "Total goals tiebreaker"
+                }
+                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
               />
 
               <button
@@ -439,6 +405,12 @@ export default function EntriesPage() {
                 {t.entries.create}
               </button>
             </div>
+
+            <p className="mt-3 text-sm text-white/60">
+              {language === "es"
+                ? "El total de goles se usará como desempate si varias entradas terminan con los mismos puntos."
+                : "The total goals guess will be used as a tiebreaker if entries finish with the same points."}
+            </p>
 
             {message && (
               <div
@@ -459,183 +431,265 @@ export default function EntriesPage() {
               const totalPoints = breakdown?.totalPoints || 0;
               const items = breakdown?.items || [];
               const placement = placementByEntry[entry.id];
+              const isExpanded = expandedEntryId === entry.id;
 
               return (
                 <div
                   key={entry.id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6"
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] shadow-xl shadow-black/15 backdrop-blur-sm"
                 >
-                  <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-2xl font-extrabold">
-                          {entry.entry_name}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedEntryId(isExpanded ? null : entry.id)
+                    }
+                    className="w-full p-5 text-left sm:p-6"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-2xl font-extrabold">
+                            {entry.entry_name}
+                          </p>
+
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
+                              entry.paid
+                                ? "border-green-300/20 bg-green-400/10 text-green-200"
+                                : "border-yellow-300/20 bg-yellow-300/10 text-yellow-200"
+                            }`}
+                          >
+                            {entry.paid ? t.common.paid : t.common.unpaid}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-sm text-white/70">
+                          {entry.paid
+                            ? placement
+                              ? getPlaceLabel(placement, language)
+                              : language === "es"
+                              ? "Sin posición todavía"
+                              : "No placement yet"
+                            : language === "es"
+                            ? "No aparece en la tabla hasta estar pagada"
+                            : "Does not appear on leaderboard until paid"}
                         </p>
 
-                        <span
-                          className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
-                            entry.paid
-                              ? "border-green-300/20 bg-green-400/10 text-green-200"
-                              : "border-yellow-300/20 bg-yellow-300/10 text-yellow-200"
-                          }`}
-                        >
-                          {entry.paid ? t.common.paid : t.common.unpaid}
-                        </span>
+                        <p className="mt-2 text-sm text-white/70">
+                          {language === "es" ? "Desempate: " : "Tiebreaker: "}
+                          <span className="font-semibold text-yellow-200">
+                            {entry.total_goals_guess ?? "—"}
+                          </span>{" "}
+                          {language === "es" ? "goles totales" : "total goals"}
+                        </p>
+
+                        <p className="mt-2 text-xs text-white/55">
+                          {isExpanded
+                            ? language === "es"
+                              ? "Ocultar detalle"
+                              : "Hide breakdown"
+                            : language === "es"
+                            ? "Ver detalle"
+                            : "View breakdown"}
+                        </p>
                       </div>
 
-                      <p className="mt-2 text-sm text-white/70">
-                        {entry.paid
-                          ? placement
-                            ? getPlaceLabel(placement, language)
-                            : language === "es"
-                            ? "Sin posición todavía"
-                            : "No placement yet"
-                          : language === "es"
-                          ? "No aparece en la tabla hasta estar pagada"
-                          : "Does not appear on leaderboard until paid"}
-                      </p>
+                      <div className="rounded-2xl border border-white/10 bg-black/10 px-5 py-4 text-left sm:min-w-[150px] sm:text-right">
+                        <p className="text-sm text-white/65">
+                          {language === "es" ? "Puntos totales" : "Total points"}
+                        </p>
+                        <p className="mt-1 text-3xl font-black">
+                          {totalPoints}
+                        </p>
+                      </div>
                     </div>
+                  </button>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 px-5 py-4 text-left sm:min-w-[150px] sm:text-right">
-                      <p className="text-sm text-white/65">
-                        {language === "es" ? "Puntos totales" : "Total points"}
-                      </p>
-                      <p className="mt-1 text-3xl font-black">{totalPoints}</p>
-                    </div>
-                  </div>
+                  {isExpanded && (
+                    <div className="border-t border-white/10 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                      {items.length === 0 ? (
+                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                          <p className="text-sm text-white/70">
+                            {language === "es"
+                              ? "Todavía no hay predicciones para esta entrada."
+                              : "There are no predictions for this entry yet."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {items.map((item, index) => {
+                            let resultColor = "";
+                            let statusLabel = "";
 
-                  {items.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                      <p className="text-sm text-white/70">
-                        {language === "es"
-                          ? "Todavía no hay predicciones para esta entrada."
-                          : "There are no predictions for this entry yet."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {items.map((item, index) => {
-                        let resultColor = "";
-                        let statusLabel = "";
+                            if (item.points === 5 || item.points === 10) {
+                              resultColor =
+                                "bg-green-500/20 border-green-400/40";
+                              statusLabel =
+                                language === "es"
+                                  ? "Marcador exacto"
+                                  : "Exact score";
+                            } else if (item.points > 0) {
+                              resultColor =
+                                "bg-yellow-400/20 border-yellow-300/40";
+                              statusLabel =
+                                language === "es"
+                                  ? "Resultado correcto"
+                                  : "Correct result";
+                            } else if (item.isFinished) {
+                              resultColor =
+                                "bg-red-400/20 border-red-300/40";
+                              statusLabel =
+                                language === "es" ? "Sin puntos" : "No points";
+                            } else {
+                              resultColor = "bg-white/5 border-white/10";
+                              statusLabel =
+                                language === "es" ? "Pendiente" : "Pending";
+                            }
 
-                        if (item.points === 5 || item.points === 10) {
-                          resultColor = "bg-green-500/20 border-green-400/40";
-                          statusLabel =
-                            language === "es"
-                              ? "Marcador exacto"
-                              : "Exact score";
-                        } else if (item.points > 0) {
-                          resultColor = "bg-yellow-400/20 border-yellow-300/40";
-                          statusLabel =
-                            language === "es"
-                              ? "Resultado correcto"
-                              : "Correct result";
-                        } else if (item.isFinished) {
-                          resultColor = "bg-red-400/20 border-red-300/40";
-                          statusLabel =
-                            language === "es" ? "Sin puntos" : "No points";
-                        } else {
-                          resultColor = "bg-white/5 border-white/10";
-                          statusLabel =
-                            language === "es" ? "Pendiente" : "Pending";
-                        }
+                            return (
+                              <div
+                                key={`${item.matchId}-${index}`}
+                                className={`rounded-2xl border p-4 sm:p-5 ${resultColor}`}
+                              >
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-70">
+                                    {translateRoundName(item.roundName, language)}
+                                  </p>
 
-                        return (
-                          <div
-                            key={`${item.matchId}-${index}`}
-                            className={`rounded-2xl border p-4 sm:p-5 ${resultColor}`}
-                          >
-                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-70">
-                                {translateRoundName(item.roundName, language)}
-                              </p>
-
-                              <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
-                                {statusLabel}
-                              </span>
-                            </div>
-
-                            <p className="text-lg font-bold sm:text-xl">
-                              {translateTeamName(item.teamA, language)}{" "}
-                              <span className="mx-2 opacity-60">vs</span>
-                              {translateTeamName(item.teamB, language)}
-                            </p>
-
-                            <div className="mt-3 space-y-1 text-sm opacity-85">
-                              <p>
-                                {language === "es"
-                                  ? "Tu predicción:"
-                                  : "Your prediction:"}{" "}
-                                <span className="font-semibold">
-                                  {item.predA} - {item.predB}
-                                </span>
-                                {item.joker
-                                  ? language === "es"
-                                    ? " • Comodín"
-                                    : " • Joker"
-                                  : ""}
-                              </p>
-
-                              {item.isFinished ? (
-                                <p>
-                                  {language === "es"
-                                    ? "Resultado final:"
-                                    : "Final result:"}{" "}
-                                  <span className="font-semibold">
-                                    {item.actualA} - {item.actualB}
-                                  </span>
-                                </p>
-                              ) : (
-                                <p>
-                                  {language === "es" ? "Estado:" : "Status:"}{" "}
-                                  <span className="font-semibold">
-                                    {language === "es" ? "Pendiente" : "Pending"}
-                                  </span>
-                                </p>
-                              )}
-                            </div>
-
-                            {item.isFinished && (
-                              <div className="mt-3 rounded-xl border border-green-300/20 bg-green-400/10 p-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-green-200">
-                                  {language === "es" ? "Resultado final" : "Final result"}
-                                </p>
-
-                                <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                                  <span className="font-semibold text-left">
-                                    {translateTeamName(item.teamA, language)}
-                                  </span>
-
-                                  <span className="text-lg font-black">
-                                    {item.actualA} - {item.actualB}
-                                  </span>
-
-                                  <span className="font-semibold text-right">
-                                    {translateTeamName(item.teamB, language)}
+                                  <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
+                                    {statusLabel}
                                   </span>
                                 </div>
-                              </div>
-                            )}
 
-                            <div className="mt-4 flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-semibold opacity-85">
-                                  {language === "es" ? "Puntos" : "Points"}
+                                <p className="text-lg font-bold sm:text-xl">
+                                  {translateTeamName(item.teamA, language)}{" "}
+                                  <span className="mx-2 opacity-60">vs</span>{" "}
+                                  {translateTeamName(item.teamB, language)}
                                 </p>
-                                {item.isFinished && (
-                                  <p className="mt-1 text-xs text-white/70">
-                                    {getResultReason(item, language)}
-                                  </p>
-                                )}
-                              </div>
 
-                              <div className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-sm font-extrabold">
-                                {item.isFinished ? `+${item.points}` : item.points}
+                                <div className="mt-3 space-y-1 text-sm opacity-85">
+                                  <p>
+                                    {language === "es"
+                                      ? "Tu predicción:"
+                                      : "Your prediction:"}{" "}
+                                    <span className="font-semibold">
+                                      {item.predA} - {item.predB}
+                                    </span>
+                                    {item.joker
+                                      ? language === "es"
+                                        ? " • Comodín"
+                                        : " • Joker"
+                                      : ""}
+                                  </p>
+
+                                  {item.isKnockout && (
+                                    <p>
+                                      {language === "es"
+                                        ? "Tu equipo clasificado:"
+                                        : "Your advancing team:"}{" "}
+                                      <span className="font-semibold">
+                                        {getTeamLabel(
+                                          item.predictedAdvancingTeam,
+                                          item.teamA,
+                                          item.teamB,
+                                          language
+                                        )}
+                                      </span>
+                                    </p>
+                                  )}
+
+                                  {item.isFinished ? (
+                                    <p>
+                                      {language === "es"
+                                        ? "Resultado final:"
+                                        : "Final result:"}{" "}
+                                      <span className="font-semibold">
+                                        {item.actualA} - {item.actualB}
+                                      </span>
+                                    </p>
+                                  ) : (
+                                    <p>
+                                      {language === "es" ? "Estado:" : "Status:"}{" "}
+                                      <span className="font-semibold">
+                                        {language === "es"
+                                          ? "Pendiente"
+                                          : "Pending"}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+
+                                {item.isFinished && (
+                                  <div className="mt-3 rounded-xl border border-green-300/20 bg-green-400/10 p-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-green-200">
+                                      {language === "es"
+                                        ? "Resultado final"
+                                        : "Final result"}
+                                    </p>
+
+                                    <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                                      <span className="font-semibold text-left">
+                                        {translateTeamName(item.teamA, language)}
+                                      </span>
+
+                                      <span className="text-lg font-black">
+                                        {item.actualA} - {item.actualB}
+                                      </span>
+
+                                      <span className="font-semibold text-right">
+                                        {translateTeamName(item.teamB, language)}
+                                      </span>
+                                    </div>
+
+                                    {item.isKnockout && (
+                                      <p className="mt-3 text-sm text-green-100">
+                                        {language === "es"
+                                          ? "Equipo clasificado:"
+                                          : "Advanced:"}{" "}
+                                        <span className="font-bold">
+                                          {getTeamLabel(
+                                            item.actualAdvancingTeam,
+                                            item.teamA,
+                                            item.teamB,
+                                            language
+                                          )}
+                                        </span>
+                                        {item.penaltyWinner && (
+                                          <span>
+                                            {" "}
+                                            {language === "es"
+                                              ? "(por penales)"
+                                              : "(on penalties)"}
+                                          </span>
+                                        )}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="mt-4 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-semibold opacity-85">
+                                      {language === "es" ? "Puntos" : "Points"}
+                                    </p>
+                                    {item.isFinished && (
+                                      <p className="mt-1 text-xs text-white/70">
+                                        {item.reason}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-sm font-extrabold">
+                                    {item.isFinished
+                                      ? `+${item.points}`
+                                      : item.points}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

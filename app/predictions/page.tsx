@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
 import { translateRoundName, translateTeamName } from "@/lib/translate";
 import { useRouter } from "next/navigation";
+import { isKnockoutRound } from "@/lib/scoring";
 
 type MatchStatus =
   | { type: "idle" }
@@ -100,7 +101,9 @@ export default function Predictions() {
         a: prediction.pred_a?.toString() ?? "",
         b: prediction.pred_b?.toString() ?? "",
         joker: prediction.joker ?? false,
+        advance_pick: prediction.advance_pick ?? null,
       };
+
       savedStatuses[prediction.match_id] = { type: "saved" };
       editingState[prediction.match_id] = false;
     });
@@ -108,6 +111,21 @@ export default function Predictions() {
     setScores(formattedScores);
     setSaveStatus(savedStatuses);
     setEditing(editingState);
+  }
+
+  function handleAdvancePick(matchId: string, value: "team_a" | "team_b") {
+    setScores((prev: any) => ({
+      ...prev,
+      [matchId]: {
+        ...prev[matchId],
+        advance_pick: value,
+      },
+    }));
+
+    setSaveStatus((prev) => ({
+      ...prev,
+      [matchId]: { type: "idle" },
+    }));
   }
 
   useEffect(() => {
@@ -303,6 +321,9 @@ export default function Predictions() {
       return;
     }
 
+    const requiresAdvancingPick = isKnockoutRound(match.round_name);
+    const predictedTie = Number(score.a) === Number(score.b);
+
     const isJokerAllowedForRound = JOKER_ALLOWED_ROUNDS.includes(
       match.round_name
     );
@@ -401,6 +422,7 @@ export default function Predictions() {
           pred_a: Number(score.a),
           pred_b: Number(score.b),
           joker: score.joker || false,
+          advance_pick: predictedTie ? score.advance_pick || null : null,
         })
         .eq("id", existing.id);
 
@@ -413,6 +435,7 @@ export default function Predictions() {
           pred_a: Number(score.a),
           pred_b: Number(score.b),
           joker: score.joker || false,
+          advance_pick: predictedTie ? score.advance_pick || null : null,
           points_awarded: 0,
         },
       ]);
@@ -458,7 +481,9 @@ export default function Predictions() {
           <div className="mb-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
             <div className="text-center">
               <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
-                {language === "es" ? "Centro de predicciones" : "Prediction center"}
+                {language === "es"
+                  ? "Centro de predicciones"
+                  : "Prediction center"}
               </div>
 
               <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
@@ -471,14 +496,6 @@ export default function Predictions() {
                   : "Choose an entry, filter by date if you want, save your scores before kickoff, and use your Joker strategically."}
               </p>
             </div>
-
-            {!authLoading && !userId && (
-              <p className="mt-5 text-center text-red-300">
-                {language === "es"
-                  ? "Debes iniciar sesión para hacer predicciones."
-                  : "You must be logged in to make predictions."}
-              </p>
-            )}
           </div>
 
           <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.05] p-5 shadow-xl shadow-black/15 backdrop-blur-sm sm:p-6">
@@ -533,13 +550,16 @@ export default function Predictions() {
               </div>
             )}
 
-            {!authLoading && selectedEntryId && selectedEntry && !selectedEntry.paid && (
-              <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
-                {language === "es"
-                  ? "Esta entrada todavía no está pagada. Una vez que sea marcada como pagada, podrás usarla para hacer predicciones."
-                  : "This entry is not paid yet. Once it is marked as paid, you’ll be able to use it to make predictions."}
-              </div>
-            )}
+            {!authLoading &&
+              selectedEntryId &&
+              selectedEntry &&
+              !selectedEntry.paid && (
+                <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
+                  {language === "es"
+                    ? "Esta entrada todavía no está pagada. Una vez que sea marcada como pagada, podrás usarla para hacer predicciones."
+                    : "This entry is not paid yet. Once it is marked as paid, you’ll be able to use it to make predictions."}
+                </div>
+              )}
 
             {!authLoading && selectedEntryId && selectedEntry?.paid && (
               <div className="mt-4 rounded-2xl border border-green-300/20 bg-green-400/10 px-4 py-3 text-sm text-green-100">
@@ -590,8 +610,14 @@ export default function Predictions() {
             <p className="mt-3 text-sm text-white/70">
               {selectedDate
                 ? language === "es"
-                  ? `Mostrando partidos para ${availableDates.find((d) => d.value === selectedDate)?.label || selectedDate}.`
-                  : `Showing matches for ${availableDates.find((d) => d.value === selectedDate)?.label || selectedDate}.`
+                  ? `Mostrando partidos para ${
+                      availableDates.find((d) => d.value === selectedDate)
+                        ?.label || selectedDate
+                    }.`
+                  : `Showing matches for ${
+                      availableDates.find((d) => d.value === selectedDate)
+                        ?.label || selectedDate
+                    }.`
                 : language === "es"
                 ? "Mostrando todos los partidos en orden cronológico."
                 : "Showing all matches in chronological order."}
@@ -615,6 +641,15 @@ export default function Predictions() {
                 const isJokerAllowedForRound = JOKER_ALLOWED_ROUNDS.includes(
                   match.round_name
                 );
+                const requiresAdvancingPick = isKnockoutRound(match.round_name);
+                const hasEnteredBothScores =
+                  scores[match.id]?.a !== undefined &&
+                  scores[match.id]?.b !== undefined &&
+                  scores[match.id]?.a !== "" &&
+                  scores[match.id]?.b !== "";
+                const predictedTie =
+                  hasEnteredBothScores &&
+                  Number(scores[match.id]?.a) === Number(scores[match.id]?.b);
 
                 const isDisabled =
                   authLoading ||
@@ -637,13 +672,17 @@ export default function Predictions() {
                       </p>
 
                       <div className="flex flex-wrap gap-2">
-                        {isLocked && (
-                          <span className="rounded-full border border-red-300/20 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-200">
-                            {language === "es" ? "Bloqueado" : "Locked"}
+                        {requiresAdvancingPick && (
+                          <span className="rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-yellow-200">
+                            {language === "es" ? "Eliminatoria" : "Knockout"}
                           </span>
                         )}
 
-                        {!isLocked && (
+                        {isLocked ? (
+                          <span className="rounded-full border border-red-300/20 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-200">
+                            {language === "es" ? "Bloqueado" : "Locked"}
+                          </span>
+                        ) : (
                           <span className="rounded-full border border-green-300/20 bg-green-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-200">
                             {language === "es" ? "Abierto" : "Open"}
                           </span>
@@ -734,6 +773,60 @@ export default function Predictions() {
                         </p>
                       </div>
                     </div>
+
+                    {requiresAdvancingPick && predictedTie && (
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <p className="mb-2 text-sm font-semibold text-white">
+                          {language === "es"
+                            ? "¿Quién avanza si hay empate?"
+                            : "Who advances if there is a tie?"}
+                        </p>
+
+                        {predictedTie && (
+                          <div className="mb-3 rounded-xl border border-yellow-300/20 bg-yellow-300/10 px-3 py-2 text-sm text-yellow-100">
+                            {language === "es"
+                              ? "Como predijiste un empate, debes elegir qué equipo avanza."
+                              : "Since you predicted a tie, you must choose which team advances."}
+                          </div>
+                        )}
+
+                        {!predictedTie && hasEnteredBothScores && (
+                          <p className="mb-3 text-xs text-white/60">
+                            {language === "es"
+                              ? "Si no predices empate, tu ganador del marcador ya cuenta como tu equipo clasificado."
+                              : "If you do not predict a tie, your score winner already counts as your advancing team."}
+                          </p>
+                        )}
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button
+                            type="button"
+                            disabled={isDisabled || !predictedTie}
+                            onClick={() => handleAdvancePick(match.id, "team_a")}
+                            className={`flex-1 rounded-xl px-4 py-2 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                              scores[match.id]?.advance_pick === "team_a"
+                                ? "bg-yellow-300 text-green-950"
+                                : "bg-white/10 text-white hover:bg-white/15"
+                            }`}
+                          >
+                            {translateTeamName(match.team_a, language)}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isDisabled || !predictedTie}
+                            onClick={() => handleAdvancePick(match.id, "team_b")}
+                            className={`flex-1 rounded-xl px-4 py-2 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                              scores[match.id]?.advance_pick === "team_b"
+                                ? "bg-yellow-300 text-green-950"
+                                : "bg-white/10 text-white hover:bg-white/15"
+                            }`}
+                          >
+                            {translateTeamName(match.team_b, language)}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <p className="mt-4 text-sm text-white/65">
                       {language === "es" ? "Inicio:" : "Kickoff:"}{" "}

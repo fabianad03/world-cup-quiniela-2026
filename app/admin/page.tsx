@@ -3,8 +3,19 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
+import { isKnockoutRound } from "@/lib/scoring";
 
 const ADMIN_PASSWORD = "6552792fd";
+
+const ROUND_OPTIONS = [
+  "Group Stage",
+  "Round of 32",
+  "Round of 16",
+  "Quarterfinals",
+  "Semifinals",
+  "Third Place",
+  "Final",
+];
 
 function localDateTimeToUTC(localValue: string) {
   if (!localValue) return "";
@@ -28,10 +39,12 @@ export default function AdminPage() {
   const [entries, setEntries] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
 
-  const [roundName, setRoundName] = useState("");
+  const [roundName, setRoundName] = useState("Group Stage");
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
   const [kickoff, setKickoff] = useState("");
+
+  const [showManageMatches, setShowManageMatches] = useState(true);
 
   async function loadData() {
     const { data: matchesData } = await supabase
@@ -88,6 +101,7 @@ export default function AdminPage() {
         score_a: null,
         score_b: null,
         is_finished: false,
+        penalty_winner: null,
       },
     ]);
 
@@ -96,7 +110,7 @@ export default function AdminPage() {
       return;
     }
 
-    setRoundName("");
+    setRoundName("Group Stage");
     setTeamA("");
     setTeamB("");
     setKickoff("");
@@ -141,14 +155,10 @@ export default function AdminPage() {
 
   if (!authorized) {
     return (
-      <main pt-28 className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
+      <main className="pt-28 min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
         <Navbar />
 
         <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-14">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_28%)]" />
-          <div className="pointer-events-none absolute -top-16 right-0 h-52 w-52 rounded-full bg-yellow-300/10 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-green-400/10 blur-3xl" />
-
           <div className="relative mx-auto max-w-md">
             <div className="mb-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 text-center shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
               <div className="mb-3 inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-200">
@@ -158,11 +168,6 @@ export default function AdminPage() {
               <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
                 Admin Login
               </h1>
-
-              <p className="mx-auto mt-3 max-w-sm text-sm text-white/75 sm:text-base">
-                Secure access for match management, result entry, and payment
-                status updates.
-              </p>
             </div>
 
             <div className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-6 shadow-2xl shadow-black/20 backdrop-blur-sm space-y-5 sm:p-7">
@@ -194,14 +199,10 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
+    <main className="pt-28 min-h-screen bg-gradient-to-b from-green-950 via-green-900 to-green-950 text-white">
       <Navbar />
 
       <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_28%)]" />
-        <div className="pointer-events-none absolute -top-16 right-0 h-52 w-52 rounded-full bg-yellow-300/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-green-400/10 blur-3xl" />
-
         <div className="relative mx-auto max-w-6xl space-y-8">
           <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-7 shadow-2xl shadow-black/20 backdrop-blur-sm sm:px-8 sm:py-9">
             <div className="text-center">
@@ -212,18 +213,14 @@ export default function AdminPage() {
               <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
                 Admin Panel
               </h1>
-
-              <p className="mx-auto mt-3 max-w-2xl text-sm text-white/75 sm:text-base">
-                Manage matches, enter results, and control paid entry status
-                from one place.
-              </p>
             </div>
           </div>
 
           {message && (
             <div
               className={`rounded-2xl border px-4 py-3 text-sm ${
-                message.toLowerCase().includes("error")
+                message.toLowerCase().includes("error") ||
+                message.toLowerCase().includes("incorrect")
                   ? "border-red-300/20 bg-red-400/10 text-red-200"
                   : "border-green-300/20 bg-green-400/10 text-green-200"
               }`}
@@ -236,19 +233,23 @@ export default function AdminPage() {
             <h2 className="mb-5 text-2xl font-bold">Create Match</h2>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input
-                type="text"
+              <select
                 value={roundName}
                 onChange={(e) => setRoundName(e.target.value)}
-                placeholder="Round name"
-                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
-              />
+                className="h-[56px] w-full rounded-[1.25rem] border border-white/15 bg-white/10 px-5 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+              >
+                {ROUND_OPTIONS.map((round) => (
+                  <option key={round} value={round} className="text-black">
+                    {round}
+                  </option>
+                ))}
+              </select>
 
               <input
                 type="datetime-local"
                 value={kickoff}
                 onChange={(e) => setKickoff(e.target.value)}
-                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition focus:border-yellow-300/40 focus:bg-white/15"
+                className="h-[56px] w-full rounded-[1.25rem] border border-white/15 bg-white/10 px-5 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
               />
 
               <input
@@ -256,7 +257,7 @@ export default function AdminPage() {
                 value={teamA}
                 onChange={(e) => setTeamA(e.target.value)}
                 placeholder="Team A"
-                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+                className="h-[56px] w-full rounded-[1.25rem] border border-white/15 bg-white/10 px-5 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
               />
 
               <input
@@ -264,8 +265,14 @@ export default function AdminPage() {
                 value={teamB}
                 onChange={(e) => setTeamB(e.target.value)}
                 placeholder="Team B"
-                className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+                className="h-[56px] w-full rounded-[1.25rem] border border-white/15 bg-white/10 px-5 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
               />
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm text-white/70">
+              {isKnockoutRound(roundName)
+                ? "This is a knockout match. If the match ends tied, you will choose who advanced when entering the final result."
+                : "This is a group stage match. Ties are allowed and no advancing team is needed."}
             </div>
 
             <button
@@ -277,28 +284,42 @@ export default function AdminPage() {
           </section>
 
           <section className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-xl shadow-black/15 backdrop-blur-sm">
-            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => setShowManageMatches((prev) => !prev)}
+              className="mb-5 flex w-full flex-col gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
               <h2 className="text-2xl font-bold">Manage Matches</h2>
 
-              <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75">
-                {matches.length} {matches.length === 1 ? "match" : "matches"}
-              </div>
-            </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75">
+                  {matches.length} {matches.length === 1 ? "match" : "matches"}
+                </div>
 
-            {matches.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/70">
-                No matches found.
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75">
+                  {showManageMatches ? "Hide matches" : "Show matches"}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {matches.map((match) => (
-                  <MatchRow
-                    key={match.id}
-                    match={match}
-                    onSave={handleUpdateMatch}
-                  />
-                ))}
-              </div>
+            </button>
+
+            {showManageMatches && (
+              <>
+                {matches.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/70">
+                    No matches found.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {matches.map((match) => (
+                      <MatchRow
+                        key={match.id}
+                        match={match}
+                        onSave={handleUpdateMatch}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
 
@@ -348,6 +369,8 @@ function MatchRow({
   match: any;
   onSave: (matchId: string, updates: any) => Promise<void>;
 }) {
+  const roundName = match.round_name || "Group Stage";
+
   const [scoreA, setScoreA] = useState(
     match.score_a === null || match.score_a === undefined
       ? ""
@@ -359,20 +382,29 @@ function MatchRow({
       : String(match.score_b)
   );
   const [isFinished, setIsFinished] = useState(match.is_finished);
+  const [penaltyWinner, setPenaltyWinner] = useState<
+    "team_a" | "team_b" | ""
+  >(match.penalty_winner || "");
+
+  const isKnockout = isKnockoutRound(roundName);
+
+  const isTie =
+    scoreA !== "" && scoreB !== "" && Number(scoreA) === Number(scoreB);
 
   async function handleSave() {
     await onSave(match.id, {
       score_a: scoreA === "" ? null : Number(scoreA),
       score_b: scoreB === "" ? null : Number(scoreB),
       is_finished: isFinished,
+      penalty_winner: isKnockout && isTie ? penaltyWinner || null : null,
     });
   }
 
   return (
     <div className="rounded-2xl border border-white/15 bg-white/[0.07] p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/65">
-          {match.round_name}
+        <p className="inline-flex h-[48px] items-center rounded-2xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white">
+          {roundName}
         </p>
 
         <span
@@ -402,7 +434,7 @@ function MatchRow({
           value={scoreA}
           onChange={(e) => setScoreA(e.target.value)}
           placeholder="Score A"
-          className="w-24 rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+          className="h-[48px] w-24 rounded-2xl border border-white/15 bg-white/10 px-4 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
         />
 
         <input
@@ -411,10 +443,10 @@ function MatchRow({
           value={scoreB}
           onChange={(e) => setScoreB(e.target.value)}
           placeholder="Score B"
-          className="w-24 rounded-2xl border border-white/15 bg-white/10 p-3 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
+          className="h-[48px] w-24 rounded-2xl border border-white/15 bg-white/10 px-4 text-white outline-none transition placeholder:text-white/35 focus:border-yellow-300/40 focus:bg-white/15"
         />
 
-        <label className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
+        <label className="flex h-[48px] items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white/85">
           <input
             type="checkbox"
             checked={isFinished}
@@ -423,13 +455,52 @@ function MatchRow({
           Finished
         </label>
 
+        {isKnockout && (
+          <select
+            value={penaltyWinner}
+            onChange={(e) =>
+              setPenaltyWinner(e.target.value as "team_a" | "team_b" | "")
+            }
+            disabled={!isTie}
+            className="h-[48px] rounded-2xl border border-white/15 bg-white/10 px-4 text-white outline-none transition disabled:cursor-not-allowed disabled:bg-gray-700/80 disabled:text-white/50"
+          >
+            <option value="" className="text-black">
+              {isTie ? "Select penalty winner" : "No penalties needed"}
+            </option>
+            <option value="team_a" className="text-black">
+              {match.team_a} advances
+            </option>
+            <option value="team_b" className="text-black">
+              {match.team_b} advances
+            </option>
+          </select>
+        )}
+
         <button
           onClick={handleSave}
-          className="rounded-2xl bg-white px-4 py-3 font-bold text-green-950 transition hover:bg-yellow-200"
+          className="h-[48px] rounded-2xl bg-white px-5 font-bold text-green-950 transition hover:bg-yellow-200"
         >
           Save Match
         </button>
       </div>
+
+      {isKnockout && isTie && (
+        <p className="mt-3 text-sm text-yellow-200">
+          This knockout match is tied, so choose who advanced.
+        </p>
+      )}
+
+      {isKnockout && !isTie && (
+        <p className="mt-3 text-sm text-white/60">
+          No penalty winner needed unless the final score is tied.
+        </p>
+      )}
+
+      {!isKnockout && (
+        <p className="mt-3 text-sm text-white/60">
+          Group stage match. No advancing team needed.
+        </p>
+      )}
     </div>
   );
 }
